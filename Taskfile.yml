@@ -1,0 +1,39 @@
+# Taskfile for Terraform Provider Phare
+# https://taskfile.dev
+
+version: "3"
+
+tasks:
+  test:
+    desc: Run all checks and tests (except acceptance tests)
+    cmds:
+      - echo "==> Formatting Go code..."
+      - go fmt ./...
+      - echo "==> Running go vet..."
+      - go vet ./...
+      - echo "==> Running staticcheck..."
+      - go run honnef.co/go/tools/cmd/staticcheck ./...
+      - echo "==> Running unit tests with race detector..."
+      - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - echo "==> Test Summary..."
+      - go tool cover -func=coverage.txt | grep total
+
+  build:
+    desc: Build the provider
+    cmds:
+      - echo "==> Building provider..."
+      - go build -v -o terraform-provider-phare
+
+  docs:
+    desc: Generate documentation
+    cmds:
+      - echo "==> Generating documentation..."
+      - go generate ./...
+      - echo "==> Validating documentation..."
+      - go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs validate --provider-name phare
+
+  test-acc:
+    desc: Run acceptance tests (requires environment variables)
+    cmds:
+      - echo "==> Running acceptance tests..."
+      - TF_ACC=1 go test -v ./...

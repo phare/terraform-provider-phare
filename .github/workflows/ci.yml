@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - run: go mod tidy
+      - run: go fmt ./...
+      - run: go vet ./...
+      - run: go run honnef.co/go/tools/cmd/staticcheck ./...
+
+      - name: Run unit tests
+        run: go test -v -race ./...
+
+  acceptance:
+    name: Acceptance Tests
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Run acceptance tests
+        env:
+          TF_ACC: "1"
+          PHARE_API_KEY: ${{ secrets.PHARE_API_KEY }}
+        run: go test -v -race ./...
