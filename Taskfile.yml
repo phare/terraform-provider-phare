@@ -7,6 +7,7 @@ tasks:
   test:
     desc: Run all checks and tests (except acceptance tests)
     cmds:
+      - task: docs
       - echo "==> Formatting Go code..."
       - go fmt ./...
       - echo "==> Running go vet..."
