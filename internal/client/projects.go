@@ -89,7 +89,6 @@ func (c *Client) ListProjects(ctx context.Context, page, perPage int) ([]*Projec
 		return nil, err
 	}
 
-	// Convert to pointer slice
 	result := make([]*ProjectResponse, len(paginatedResp.Data))
 	for i := range paginatedResp.Data {
 		result[i] = &paginatedResp.Data[i]

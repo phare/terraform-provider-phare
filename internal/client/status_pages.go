@@ -115,7 +115,6 @@ func (c *Client) ListStatusPages(ctx context.Context, page, perPage int) ([]*Sta
 		return nil, err
 	}
 
-	// Convert to pointer slice
 	result := make([]*StatusPageResponse, len(paginatedResp.Data))
 	for i := range paginatedResp.Data {
 		result[i] = &paginatedResp.Data[i]

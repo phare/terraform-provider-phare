@@ -123,7 +123,6 @@ func (c *Client) ListMonitors(ctx context.Context, page, perPage int) ([]*Monito
 		return nil, err
 	}
 
-	// Convert to pointer slice
 	result := make([]*MonitorResponse, len(paginatedResp.Data))
 	for i := range paginatedResp.Data {
 		result[i] = &paginatedResp.Data[i]

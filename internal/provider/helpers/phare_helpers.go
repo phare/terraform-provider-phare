@@ -109,22 +109,18 @@ func ConfigureResourceWithProjectScope(
 
 // getDynamicStringValue extracts a string value from types.Dynamic
 func getDynamicStringValue(dynamicVal types.Dynamic) string {
-	// Check if the dynamic value is null or unknown
 	if dynamicVal.IsNull() || dynamicVal.IsUnknown() {
 		return ""
 	}
 
-	// Get the underlying value
 	underlyingValue := dynamicVal.UnderlyingValue()
 
-	// Check if it's an int64 (project ID)
 	if intVal, ok := underlyingValue.(types.Int64); ok && !intVal.IsNull() {
 		return fmt.Sprintf("%d", intVal.ValueInt64())
 	} else if strVal, ok := underlyingValue.(types.String); ok && !strVal.IsNull() {
 		return strVal.ValueString()
 	}
 
-	// If we can't extract the value properly, return empty string
 	return ""
 }
 

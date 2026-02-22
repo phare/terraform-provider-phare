@@ -19,8 +19,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// SHARED CODE - BASE MODELS AND SCHEMAS FOR ALL UPTIME MONITOR TYPES
-
 // UptimeMonitorBaseModel represents the common fields for all uptime monitor types
 // This is embedded in both HTTP and TCP monitor models
 type UptimeMonitorBaseModel struct {
@@ -154,9 +152,6 @@ type TcpRequestModel struct {
 	TlsSkipVerify types.Bool   `tfsdk:"tls_skip_verify"`
 }
 
-// Import the base model from the HTTP resource file
-// This allows us to share the common base model between HTTP and TCP monitors
-
 // UptimeMonitorTcpModel represents the main model for TCP uptime monitor
 // It embeds the base model from HTTP resource and adds TCP-specific fields
 type UptimeMonitorTcpModel struct {
@@ -264,8 +259,6 @@ func (r *uptimeMonitorTcpResource) ModifyPlan(ctx context.Context, req resource.
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_monitor_tcp", &resp.Diagnostics)
 }
-
-// getScopedClient is provided by helpers.ResourceBase
 
 // Helper function to convert Terraform TCP request model to client request config
 func tcpRequestModelToClientConfig(ctx context.Context, request TcpRequestModel) (client.MonitorRequestConfig, error) {
