@@ -53,10 +53,10 @@ type Client struct {
 	token            string
 	httpClient       *http.Client
 	userAgent        string
-	projectID        string // Optional project ID for scoping requests
-	projectSlug      string // Optional project slug for scoping requests
-	providerVersion  string // Version of the Terraform provider
-	terraformVersion string // Version of Terraform
+	projectID        string
+	projectSlug      string
+	providerVersion  string
+	terraformVersion string
 }
 
 // NewClient creates a new Phare API client.
@@ -293,19 +293,16 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 }
 
 // GetConfig returns the client's configuration parameters.
-// Returns baseURL, token, and timeout.
 func (c *Client) GetConfig() (string, string, time.Duration) {
 	return c.baseURL, c.token, c.httpClient.Timeout
 }
 
 // GetProjectScope returns the client's project scope configuration.
-// Returns projectID and projectSlug (only one will be non-empty).
 func (c *Client) GetProjectScope() (string, string) {
 	return c.projectID, c.projectSlug
 }
 
 // GetVersions returns the client's version information.
-// Returns providerVersion and terraformVersion.
 func (c *Client) GetVersions() (string, string) {
 	return c.providerVersion, c.terraformVersion
 }

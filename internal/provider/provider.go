@@ -88,10 +88,8 @@ func (p *phareProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		return
 	}
 
-	// Capture Terraform version for user agent
 	p.terraformVersion = req.TerraformVersion
 
-	// Get API key from config or environment
 	apiKey := os.Getenv("PHARE_API_KEY")
 	if !config.ApiKey.IsNull() {
 		apiKey = config.ApiKey.ValueString()
@@ -106,7 +104,6 @@ func (p *phareProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		return
 	}
 
-	// Get base URL with default
 	baseURL := "https://api.phare.io"
 	if envURL := os.Getenv("PHARE_BASE_URL"); envURL != "" {
 		baseURL = envURL
@@ -115,13 +112,11 @@ func (p *phareProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		baseURL = config.BaseUrl.ValueString()
 	}
 
-	// Get timeout with default
 	timeout := 30 * time.Second
 	if !config.Timeout.IsNull() {
 		timeout = time.Duration(config.Timeout.ValueInt64()) * time.Second
 	}
 
-	// Get project scope from config or environment
 	// Environment variables take precedence: PHARE_PROJECT_ID or PHARE_PROJECT_SLUG
 	var projectID, projectSlug string
 

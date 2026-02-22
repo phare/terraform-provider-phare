@@ -279,8 +279,6 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_status_page", &resp.Diagnostics)
 }
 
-// getScopedClient is provided by helpers.ResourceBase
-
 // Helper function to convert Terraform colors model to client colors config
 func colorsModelToClientConfig(colors ColorsModel) *client.StatusPageColors {
 	return &client.StatusPageColors{

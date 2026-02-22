@@ -88,7 +88,6 @@ func (c *Client) ListAlertRules(ctx context.Context, page, perPage int) ([]*Aler
 		return nil, err
 	}
 
-	// Convert to pointer slice
 	result := make([]*AlertRuleResponse, len(paginatedResp.Data))
 	for i := range paginatedResp.Data {
 		result[i] = &paginatedResp.Data[i]

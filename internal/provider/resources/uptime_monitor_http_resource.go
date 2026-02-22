@@ -71,8 +71,6 @@ func ClientAssertionsToHttpTerraformList(ctx context.Context, assertions []map[s
 	return list, nil
 }
 
-// HTTP-SPECIFIC CODE
-
 // HttpRequestModel represents the HTTP request configuration
 type HttpRequestModel struct {
 	Body            types.String `tfsdk:"body"`
@@ -253,8 +251,6 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_monitor_http", &resp.Diagnostics)
 }
-
-// getScopedClient is provided by helpers.ResourceBase
 
 // Helper function to convert Terraform HTTP request model to client request config
 func httpRequestModelToClientConfig(ctx context.Context, request HttpRequestModel) (client.MonitorRequestConfig, error) {
