@@ -91,8 +91,11 @@ resource "phare_alert_rule" "monitor_certificate_expiring" {
 
 - `created_at` (String) Date of creation
 - `event_settings` (String) Additional settings for the event (JSON object as string)
-- `id` (Number) Alert rule ID
 - `integration_settings` (String) Additional settings for the integration (JSON object as string)
 - `project_id` (Number) The ID of a project to use as a scope
-- `project_scope` (Dynamic) Optional. Project scope for this specific resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
+- `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
 - `updated_at` (String) Date of last update
+
+### Read-Only
+
+- `id` (Number) Alert rule ID

@@ -34,13 +34,43 @@ Read-Only:
 
 - `created_at` (String) Creation timestamp
 - `id` (Number) Monitor ID
+- `incident_confirmations` (Number) Number of confirmations before creating an incident
 - `interval` (Number) Monitoring interval in seconds
 - `name` (String) Monitor name
+- `one_day_availability` (Number) Availability over the last 24 hours
 - `paused` (Boolean) Whether the monitor is paused
 - `project_id` (Number) Parent project ID
-- `protocol` (String) Monitoring protocol
+- `protocol` (String) Monitoring protocol (http, tcp)
+- `recovery_confirmations` (Number) Number of confirmations before marking as recovered
 - `regions` (List of String) Regions where monitoring is performed
-- `status` (String) Monitor status
+- `request` (Attributes) Monitor request configuration (varies by protocol) (see [below for nested schema](#nestedatt--monitors--request))
+- `response_time` (Number) Latest response time in milliseconds
+- `seven_days_availability` (Number) Availability over the last 7 days
+- `status` (String) Current monitor status
+- `success_assertions` (String) Success assertions as JSON
 - `timeout` (Number) Monitoring timeout in milliseconds
 - `updated_at` (String) Last update timestamp
-- `url` (String) URL being monitored (for HTTP/HTTPS)
+
+<a id="nestedatt--monitors--request"></a>
+### Nested Schema for `monitors.request`
+
+Read-Only:
+
+- `body` (String) HTTP request body (for HTTP monitors)
+- `connection` (String) Connection type (for TCP monitors)
+- `follow_redirects` (Boolean) Whether to follow HTTP redirects
+- `headers` (Attributes List) HTTP headers to send with the request (see [below for nested schema](#nestedatt--monitors--request--headers))
+- `host` (String) Host to connect to (for TCP monitors)
+- `method` (String) HTTP method (for HTTP monitors)
+- `port` (Number) Port to connect to (for TCP monitors)
+- `tls_skip_verify` (Boolean) Whether to skip TLS certificate verification
+- `url` (String) URL being monitored (for HTTP/HTTPS monitors)
+- `user_agent_secret` (String) User agent secret for request verification
+
+<a id="nestedatt--monitors--request--headers"></a>
+### Nested Schema for `monitors.request.headers`
+
+Read-Only:
+
+- `name` (String) Header name
+- `value` (String) Header value

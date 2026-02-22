@@ -34,8 +34,10 @@ Read-Only:
 
 - `created_at` (String) Creation timestamp
 - `event` (String) Event name that triggers the alert rule
+- `event_settings` (String) Event-specific settings as JSON
 - `id` (Number) Alert rule ID
-- `integration_id` (Number) Integration ID used to send notifications
+- `integration_id` (Number) Integration ID for notifications
+- `integration_settings` (String) Integration-specific settings as JSON
 - `project_id` (Number) Project ID (optional scope)
 - `rate_limit` (Number) Rate limit in minutes
 - `updated_at` (String) Last update timestamp

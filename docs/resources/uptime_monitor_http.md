@@ -62,11 +62,14 @@ resource "phare_uptime_monitor_http" "website" {
 
 ### Optional
 
+- `paused` (Boolean) Whether the monitor is paused
+- `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
+
+### Read-Only
+
 - `created_at` (String) Date of creation
 - `id` (Number) Monitor ID
-- `paused` (Boolean) Whether the monitor is paused
 - `project_id` (Number) Parent project ID
-- `project_scope` (Dynamic) Optional. Project scope for this specific resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
 - `status` (String) Monitor status
 - `updated_at` (String) Date of last update
 

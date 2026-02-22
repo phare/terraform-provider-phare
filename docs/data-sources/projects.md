@@ -41,6 +41,6 @@ Read-Only:
 
 Read-Only:
 
-- `incident_merging_time_window` (Number) Time window for merging in minutes
-- `use_incident_ai` (Boolean) Whether AI summaries are enabled
+- `incident_merging_time_window` (Number) Time window for incident merging in minutes
+- `use_incident_ai` (Boolean) Whether AI summaries are enabled for incidents
 - `use_incident_merging` (Boolean) Whether incident merging is enabled

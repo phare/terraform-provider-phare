@@ -62,12 +62,15 @@ resource "phare_uptime_status_page" "main" {
 ### Optional
 
 - `components` (Attributes List) List of components (monitors) to show on the status page (see [below for nested schema](#nestedatt--components))
-- `created_at` (String) Date of creation
 - `domain` (String) Custom domain for the status page
+- `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
+- `subscription_channels` (List of String) Subscription channels available (rss, atom)
+
+### Read-Only
+
+- `created_at` (String) Date of creation
 - `id` (Number) Status page ID
 - `project_id` (Number) Parent project ID
-- `project_scope` (Dynamic) Optional. Project scope for this specific resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
-- `subscription_channels` (List of String) Subscription channels available (rss, atom)
 - `updated_at` (String) Date of last update
 
 <a id="nestedatt--colors"></a>

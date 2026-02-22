@@ -32,6 +32,8 @@ data "phare_uptime_status_pages" "all" {}
 
 Read-Only:
 
+- `colors` (Attributes) Colors to customize the status page appearance (see [below for nested schema](#nestedatt--status_pages--colors))
+- `components` (Attributes List) List of components (monitors) shown on the status page (see [below for nested schema](#nestedatt--status_pages--components))
 - `created_at` (String) Creation timestamp
 - `description` (String) Status page HTML description
 - `domain` (String) Custom domain for the status page
@@ -40,6 +42,28 @@ Read-Only:
 - `project_id` (Number) Parent project ID
 - `search_engine_indexed` (Boolean) Whether search engines can index the page
 - `subdomain` (String) Subdomain for the status page
+- `timeframe` (Number) Number of days of status/incident history to display
 - `title` (String) Status page HTML title
 - `updated_at` (String) Last update timestamp
-- `website_url` (String) URL to redirect users clicking the logo
+- `website_url` (String) URL to redirect users from the status page
+
+<a id="nestedatt--status_pages--colors"></a>
+### Nested Schema for `status_pages.colors`
+
+Read-Only:
+
+- `degraded_performance` (String) Color for degraded performance status
+- `empty` (String) Color for empty/no data status
+- `maintenance` (String) Color for maintenance status
+- `major_outage` (String) Color for major outage status
+- `operational` (String) Color for operational status
+- `partial_outage` (String) Color for partial outage status
+
+
+<a id="nestedatt--status_pages--components"></a>
+### Nested Schema for `status_pages.components`
+
+Read-Only:
+
+- `componentable_id` (Number) ID of the component
+- `componentable_type` (String) Type of component

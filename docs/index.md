@@ -20,7 +20,7 @@ The provider requires an API key for authentication. There are two types of API 
    - Require `project_scope` to be specified for most resources
    - Can manage resources across multiple projects
 
-2. **Project-scoped API keys** (`pha_*`)
+2. **Project-scoped API keys** (`pha_prj_*`)
    - Limited to a specific project
    - Do not require `project_scope` configuration
    - Cannot create or delete projects
@@ -183,9 +183,6 @@ provider "phare" {
 - `base_url` (String) Phare API base URL. Defaults to https://api.phare.io. Can be overridden via PHARE_BASE_URL environment variable for testing.
 - `project_scope` (Dynamic) Optional. Project scope for API requests when using an organization-scoped API key. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Can also be set via PHARE_PROJECT_ID or PHARE_PROJECT_SLUG environment variables.
 - `timeout` (Number) HTTP client timeout in seconds. Defaults to 30.
-
-
-
 
 ## Support
 

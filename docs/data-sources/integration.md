@@ -38,6 +38,6 @@ data "phare_integration" "email" {
 
 ### Read-Only
 
-- `created_at` (String) Date of creation
-- `paused` (Boolean) Integration paused status
-- `updated_at` (String) Date of last update
+- `created_at` (String) Creation timestamp
+- `paused` (Boolean) Whether the integration is paused
+- `updated_at` (String) Last update timestamp
