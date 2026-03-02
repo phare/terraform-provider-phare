@@ -70,7 +70,6 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			},
 		},
 		"paused": schema.BoolAttribute{
-			Optional:            true,
 			Computed:            true,
 			Description:         "Whether the monitor is paused",
 			MarkdownDescription: "Whether the monitor is paused",
@@ -92,11 +91,8 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			MarkdownDescription: "Regions to monitor from, see the full [region list](https://docs.phare.io/uptime/monitors#regions)",
 		},
 		"status": schema.StringAttribute{
-			Computed:    true,
-			Description: "Monitor status",
-			PlanModifiers: []planmodifier.String{
-				helpers.TrimString(),
-			},
+			Computed:            true,
+			Description:         "Monitor status",
 			MarkdownDescription: "Monitor status",
 		},
 		"timeout": schema.Int64Attribute{
@@ -177,12 +173,12 @@ func UptimeMonitorTcpResourceSchema(ctx context.Context) schema.Schema {
 			"connection": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "Connection type (plain or tls, defaults to plain)",
-				MarkdownDescription: "Connection type (plain or tls, defaults to plain)",
+				Description:         "Connection type (plain or tls)",
+				MarkdownDescription: "Connection type (plain or tls)",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},
-				Default: stringdefault.StaticString("tcp"),
+				Default: stringdefault.StaticString("plain"),
 				Validators: []validator.String{
 					stringvalidator.OneOf("plain", "tls"),
 				},
