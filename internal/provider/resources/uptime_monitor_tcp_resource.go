@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -64,6 +65,9 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			Required:            true,
 			Description:         "Monitor name",
 			MarkdownDescription: "Monitor name",
+			PlanModifiers: []planmodifier.String{
+				helpers.TrimString(),
+			},
 		},
 		"paused": schema.BoolAttribute{
 			Optional:            true,
@@ -88,8 +92,11 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			MarkdownDescription: "Regions to monitor from",
 		},
 		"status": schema.StringAttribute{
-			Computed:            true,
-			Description:         "Monitor status",
+			Computed:    true,
+			Description: "Monitor status",
+			PlanModifiers: []planmodifier.String{
+				helpers.TrimString(),
+			},
 			MarkdownDescription: "Monitor status",
 		},
 		"timeout": schema.Int64Attribute{
@@ -172,6 +179,9 @@ func UptimeMonitorTcpResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Connection type (plain or tls, defaults to plain)",
 				MarkdownDescription: "Connection type (plain or tls, defaults to plain)",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 				Default:             stringdefault.StaticString("tcp"),
 				Validators: []validator.String{
 					stringvalidator.OneOf("plain", "tls"),
@@ -181,6 +191,9 @@ func UptimeMonitorTcpResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "Hostname or IP address",
 				MarkdownDescription: "Hostname or IP address",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"port": schema.Int64Attribute{
 				Required:            true,

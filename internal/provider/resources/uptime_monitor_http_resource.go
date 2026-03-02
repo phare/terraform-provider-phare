@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-phare/internal/client"
@@ -135,6 +136,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "HTTP method (GET, POST, PUT, PATCH, HEAD, OPTIONS)",
 				MarkdownDescription: "HTTP method (GET, POST, PUT, PATCH, HEAD, OPTIONS)",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"tls_skip_verify": schema.BoolAttribute{
 				Optional:            true,
@@ -147,6 +151,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "URL to monitor",
 				MarkdownDescription: "URL to monitor",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"user_agent_secret": schema.StringAttribute{
 				Optional:            true,
@@ -154,6 +161,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 				Sensitive:           true,
 				Description:         "Secret value in User-Agent header for authentication",
 				MarkdownDescription: "Secret value in User-Agent header for authentication",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 		},
 		Required:            true,
@@ -168,22 +178,34 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 					Required:            true,
 					Description:         "Operator (in, not_in, equals, not_equals, contains, not_contains)",
 					MarkdownDescription: "Operator (in, not_in, equals, not_equals, contains, not_contains)",
+					PlanModifiers: []planmodifier.String{
+						helpers.TrimString(),
+					},
 				},
 				"selector": schema.StringAttribute{
 					Optional:            true,
 					Computed:            true,
 					Description:         "Selector (header name for response_header type)",
 					MarkdownDescription: "Selector (header name for response_header type)",
+					PlanModifiers: []planmodifier.String{
+						helpers.TrimString(),
+					},
 				},
 				"type": schema.StringAttribute{
 					Required:            true,
 					Description:         "Assertion type (status_code, response_header, response_body)",
 					MarkdownDescription: "Assertion type (status_code, response_header, response_body)",
+					PlanModifiers: []planmodifier.String{
+						helpers.TrimString(),
+					},
 				},
 				"value": schema.StringAttribute{
 					Required:            true,
 					Description:         "Value to assert against",
 					MarkdownDescription: "Value to assert against",
+					PlanModifiers: []planmodifier.String{
+						helpers.TrimString(),
+					},
 				},
 			},
 		},

@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -127,12 +128,18 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "Status page description",
 				MarkdownDescription: "Status page description",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"domain": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
 				Description:         "Custom domain for the status page",
 				MarkdownDescription: "Custom domain for the status page",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"id": schema.Int64Attribute{
 				Computed:            true,
@@ -143,6 +150,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "Status page name",
 				MarkdownDescription: "Status page name",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"project_id": schema.Int64Attribute{
 				Computed:            true,
@@ -158,6 +168,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "Subdomain for the status page",
 				MarkdownDescription: "Subdomain for the status page",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"subscription_channels": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -175,6 +188,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "Status page title",
 				MarkdownDescription: "Status page title",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"updated_at": schema.StringAttribute{
 				Computed:            true,
@@ -185,6 +201,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "URL to redirect users from the status page",
 				MarkdownDescription: "URL to redirect users from the status page",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"project_scope": schema.DynamicAttribute{
 				Description: "Optional. Project scope for this resource. " +

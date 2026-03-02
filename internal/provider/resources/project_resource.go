@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"terraform-provider-phare/internal/client"
+	"terraform-provider-phare/internal/provider/helpers"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -59,6 +60,9 @@ func ProjectResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "Project name (1-25 characters)",
 				MarkdownDescription: "Project name (1-25 characters)",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"settings": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
