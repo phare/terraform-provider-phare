@@ -21,11 +21,32 @@ resource "phare_uptime_monitor_http" "website" {
   recovery_confirmations = 3
   regions                = ["as-jpn-hnd"]
 
-  success_assertions = [
-    {
-      type     = "status_code"
+  success_assertions {
+    status_code {
       operator = "in"
-      value    = "2xx,30x,418"
+      value    = "2xx"
     }
-  ]
+
+    response_header {
+      selector = "Content-Type"
+      operator = "equals"
+      value    = "application/json"
+    }
+
+    response_header {
+      selector = "Cache-Control"
+      operator = "not_equals"
+      value    = "no-cache"
+    }
+
+    response_body {
+      operator = "contains"
+      value    = "Hello"
+    }
+
+    response_body {
+      operator = "not_contains"
+      value    = "Error"
+    }
+  }
 }

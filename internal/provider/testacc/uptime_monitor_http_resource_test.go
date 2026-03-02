@@ -41,13 +41,12 @@ resource "phare_uptime_monitor_http" "test" {
 		url    = "https://invariance.dev"
 	}
 
-	success_assertions = [
-		{
-			type     = "status_code"
+	success_assertions {
+		status_code {
 			operator = "in"
 			value    = "2xx"
 		}
-	]
+	}
 }
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(
@@ -60,9 +59,8 @@ resource "phare_uptime_monitor_http" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.url", "https://invariance.dev"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.follow_redirects", "true"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.tls_skip_verify", "false"),
-					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "success_assertions.0.type", "status_code"),
-					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "success_assertions.0.operator", "in"),
-					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "success_assertions.0.value", "2xx"),
+					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "success_assertions.status_code.0.operator", "in"),
+					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "success_assertions.status_code.0.value", "2xx"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_monitor_http.test", "id"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_monitor_http.test", "project_id"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_monitor_http.test", "status"),
@@ -92,13 +90,12 @@ resource "phare_uptime_monitor_http" "test" {
 		url    = "https://invariance.dev"
 	}
 
-	success_assertions = [
-		{
-			type     = "status_code"
+	success_assertions {
+		status_code {
 			operator = "in"
 			value    = "2xx"
 		}
-	]
+	}
 }
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(

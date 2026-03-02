@@ -10,7 +10,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 
 	"terraform-provider-phare/internal/client"
 	"terraform-provider-phare/internal/provider/helpers"
@@ -28,48 +31,56 @@ var HeaderModelAttrTypes = map[string]attr.Type{
 	"value": types.StringType,
 }
 
-// SuccessAssertionModel represents a success assertion for HTTP monitors
-type SuccessAssertionModel struct {
-	Type     types.String `tfsdk:"type"`
+// StatusCodeAssertionModel represents a status code assertion for HTTP monitors
+type StatusCodeAssertionModel struct {
 	Operator types.String `tfsdk:"operator"`
 	Value    types.String `tfsdk:"value"`
-	Selector types.String `tfsdk:"selector"`
 }
 
-// SuccessAssertionModelAttrTypes defines the attribute types for SuccessAssertionModel
-var SuccessAssertionModelAttrTypes = map[string]attr.Type{
-	"type":     types.StringType,
+// StatusCodeAssertionModelAttrTypes defines the attribute types for StatusCodeAssertionModel
+var StatusCodeAssertionModelAttrTypes = map[string]attr.Type{
 	"operator": types.StringType,
 	"value":    types.StringType,
-	"selector": types.StringType,
 }
 
-// ClientAssertionsToHttpTerraformList converts client success assertions to Terraform HTTP list
-func ClientAssertionsToHttpTerraformList(ctx context.Context, assertions []map[string]interface{}) (types.List, error) {
-	if len(assertions) == 0 {
-		return types.ListNull(types.ObjectType{AttrTypes: SuccessAssertionModelAttrTypes}), nil
-	}
+// ResponseHeaderAssertionModel represents a response header assertion for HTTP monitors
+type ResponseHeaderAssertionModel struct {
+	Selector types.String `tfsdk:"selector"`
+	Operator types.String `tfsdk:"operator"`
+	Value    types.String `tfsdk:"value"`
+}
 
-	assertionsList := make([]attr.Value, len(assertions))
-	for i, a := range assertions {
-		assertionAttrs := map[string]attr.Value{
-			"type":     types.StringValue(a["type"].(string)),
-			"operator": types.StringValue(a["operator"].(string)),
-			"value":    types.StringValue(a["value"].(string)),
-			"selector": types.StringNull(),
-		}
-		if selector, ok := a["selector"]; ok && selector != nil {
-			assertionAttrs["selector"] = types.StringValue(selector.(string))
-		}
-		assertionObj, _ := types.ObjectValue(SuccessAssertionModelAttrTypes, assertionAttrs)
-		assertionsList[i] = assertionObj
-	}
+// ResponseHeaderAssertionModelAttrTypes defines the attribute types for ResponseHeaderAssertionModel
+var ResponseHeaderAssertionModelAttrTypes = map[string]attr.Type{
+	"selector": types.StringType,
+	"operator": types.StringType,
+	"value":    types.StringType,
+}
 
-	list, diags := types.ListValue(types.ObjectType{AttrTypes: SuccessAssertionModelAttrTypes}, assertionsList)
-	if diags.HasError() {
-		return types.ListNull(types.ObjectType{AttrTypes: SuccessAssertionModelAttrTypes}), fmt.Errorf("error creating list: %v", diags)
-	}
-	return list, nil
+// ResponseBodyAssertionModel represents a response body assertion for HTTP monitors
+type ResponseBodyAssertionModel struct {
+	Operator types.String `tfsdk:"operator"`
+	Value    types.String `tfsdk:"value"`
+}
+
+// ResponseBodyAssertionModelAttrTypes defines the attribute types for ResponseBodyAssertionModel
+var ResponseBodyAssertionModelAttrTypes = map[string]attr.Type{
+	"operator": types.StringType,
+	"value":    types.StringType,
+}
+
+// SuccessAssertionsModel represents the success assertions configuration
+type SuccessAssertionsModel struct {
+	StatusCode     types.List `tfsdk:"status_code"`
+	ResponseHeader types.List `tfsdk:"response_header"`
+	ResponseBody   types.List `tfsdk:"response_body"`
+}
+
+// SuccessAssertionsModelAttrTypes defines the attribute types for SuccessAssertionsModel
+var SuccessAssertionsModelAttrTypes = map[string]attr.Type{
+	"status_code":     types.ListType{ElemType: types.ObjectType{AttrTypes: StatusCodeAssertionModelAttrTypes}},
+	"response_header": types.ListType{ElemType: types.ObjectType{AttrTypes: ResponseHeaderAssertionModelAttrTypes}},
+	"response_body":   types.ListType{ElemType: types.ObjectType{AttrTypes: ResponseBodyAssertionModelAttrTypes}},
 }
 
 // HttpRequestModel represents the HTTP request configuration
@@ -87,8 +98,8 @@ type HttpRequestModel struct {
 // It embeds the base model and adds HTTP-specific fields
 type UptimeMonitorHttpModel struct {
 	UptimeMonitorBaseModel
-	Request           HttpRequestModel `tfsdk:"request"`
-	SuccessAssertions types.List       `tfsdk:"success_assertions"`
+	Request           HttpRequestModel       `tfsdk:"request"`
+	SuccessAssertions SuccessAssertionsModel `tfsdk:"success_assertions"`
 }
 
 // UptimeMonitorHttpResourceSchema defines the schema for the HTTP uptime monitor resource
@@ -104,6 +115,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Request body for POST, PUT, PATCH",
 				MarkdownDescription: "Request body for POST, PUT, PATCH",
+				PlanModifiers: []planmodifier.String{
+					helpers.TrimString(),
+				},
 			},
 			"follow_redirects": schema.BoolAttribute{
 				Optional:            true,
@@ -119,11 +133,17 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 							Required:            true,
 							Description:         "Header name",
 							MarkdownDescription: "Header name",
+							PlanModifiers: []planmodifier.String{
+								helpers.TrimString(),
+							},
 						},
 						"value": schema.StringAttribute{
 							Required:            true,
 							Description:         "Header value",
 							MarkdownDescription: "Header value",
+							PlanModifiers: []planmodifier.String{
+								helpers.TrimString(),
+							},
 						},
 					},
 				},
@@ -138,6 +158,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "HTTP method (GET, POST, PUT, PATCH, HEAD, OPTIONS)",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
+				},
+				Validators: []validator.String{
+					stringvalidator.OneOf("GET", "POST", "PUT", "PATCH", "HEAD", "OPTIONS"),
 				},
 			},
 			"tls_skip_verify": schema.BoolAttribute{
@@ -171,51 +194,107 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 		MarkdownDescription: "HTTP/HTTPS request configuration",
 	}
 
-	baseAttributes["success_assertions"] = schema.ListNestedAttribute{
-		NestedObject: schema.NestedAttributeObject{
-			Attributes: map[string]schema.Attribute{
-				"operator": schema.StringAttribute{
-					Required:            true,
-					Description:         "Operator (in, not_in, equals, not_equals, contains, not_contains)",
-					MarkdownDescription: "Operator (in, not_in, equals, not_equals, contains, not_contains)",
-					PlanModifiers: []planmodifier.String{
-						helpers.TrimString(),
-					},
-				},
-				"selector": schema.StringAttribute{
-					Optional:            true,
-					Computed:            true,
-					Description:         "Selector (header name for response_header type)",
-					MarkdownDescription: "Selector (header name for response_header type)",
-					PlanModifiers: []planmodifier.String{
-						helpers.TrimString(),
-					},
-				},
-				"type": schema.StringAttribute{
-					Required:            true,
-					Description:         "Assertion type (status_code, response_header, response_body)",
-					MarkdownDescription: "Assertion type (status_code, response_header, response_body)",
-					PlanModifiers: []planmodifier.String{
-						helpers.TrimString(),
-					},
-				},
-				"value": schema.StringAttribute{
-					Required:            true,
-					Description:         "Value to assert against",
-					MarkdownDescription: "Value to assert against",
-					PlanModifiers: []planmodifier.String{
-						helpers.TrimString(),
-					},
-				},
-			},
-		},
-		Required:            true,
-		Description:         "List of assertions that must be true for the check to be considered successful",
-		MarkdownDescription: "List of assertions that must be true for the check to be considered successful, [see docs](https://docs.phare.io/uptime/monitors#success-assertions)",
-	}
-
 	return schema.Schema{
 		Attributes: baseAttributes,
+		Blocks: map[string]schema.Block{
+			"success_assertions": schema.SingleNestedBlock{
+				Blocks: map[string]schema.Block{
+					"status_code": schema.ListNestedBlock{
+						NestedObject: schema.NestedBlockObject{
+							Attributes: map[string]schema.Attribute{
+								"operator": schema.StringAttribute{
+									Required:            true,
+									Description:         "Operator to use for the assertion (in, not_in)",
+									MarkdownDescription: "Operator to use for the assertion (in, not_in)",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+									Validators: []validator.String{
+										stringvalidator.OneOf("in", "not_in"),
+									},
+								},
+								"value": schema.StringAttribute{
+									Required:            true,
+									Description:         "A comma-separated list of status code values, you can use x as a wildcard for any digit",
+									MarkdownDescription: "A comma-separated list of status code values, you can use x as a wildcard for any digit",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+								},
+							},
+						},
+						Description:         "Status code assertions",
+						MarkdownDescription: "Status code assertions",
+					},
+
+					"response_header": schema.ListNestedBlock{
+						NestedObject: schema.NestedBlockObject{
+							Attributes: map[string]schema.Attribute{
+								"selector": schema.StringAttribute{
+									Required:            true,
+									Description:         "The name of the header to assert",
+									MarkdownDescription: "The name of the header to assert",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+								},
+								"operator": schema.StringAttribute{
+									Required:            true,
+									Description:         "Operator to use for the assertion (equals, not_equals)",
+									MarkdownDescription: "Operator to use for the assertion (equals, not_equals)",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+									Validators: []validator.String{
+										stringvalidator.OneOf("equals", "not_equals"),
+									},
+								},
+								"value": schema.StringAttribute{
+									Required:            true,
+									Description:         "The value of the header to assert",
+									MarkdownDescription: "The value of the header to assert",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+								},
+							},
+						},
+						Description:         "Response header assertions",
+						MarkdownDescription: "Response header assertions",
+					},
+
+					"response_body": schema.ListNestedBlock{
+						NestedObject: schema.NestedBlockObject{
+							Attributes: map[string]schema.Attribute{
+								"operator": schema.StringAttribute{
+									Required:            true,
+									Description:         "Operator to use for the assertion (contains, not_contains)",
+									MarkdownDescription: "Operator to use for the assertion (contains, not_contains)",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+									Validators: []validator.String{
+										stringvalidator.OneOf("contains", "not_contains"),
+									},
+								},
+								"value": schema.StringAttribute{
+									Required:            true,
+									Description:         "A word or sentence to check in the response body",
+									MarkdownDescription: "A word or sentence to check in the response body",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+								},
+							},
+						},
+						Description:         "Response body assertions",
+						MarkdownDescription: "Response body assertions",
+					},
+				},
+				Description:         "List of assertions that must be true for the check to be considered successful",
+				MarkdownDescription: "List of assertions that must be true for the check to be considered successful, [see docs](https://docs.phare.io/uptime/monitors#success-assertions)",
+			},
+		},
 	}
 }
 
@@ -388,31 +467,109 @@ func clientConfigToHttpRequestModel(ctx context.Context, config client.MonitorRe
 }
 
 // Helper to convert success assertions from client to Terraform
-func clientAssertionsToHttpTerraformList(ctx context.Context, assertions []map[string]interface{}) (types.List, error) {
+func clientAssertionsToHttpTerraformModel(ctx context.Context, assertions []map[string]interface{}) (SuccessAssertionsModel, error) {
+	result := SuccessAssertionsModel{}
+
 	if len(assertions) == 0 {
-		return types.ListNull(types.ObjectType{AttrTypes: SuccessAssertionModelAttrTypes}), nil
+		// Return empty model with null lists
+		result.StatusCode = types.ListNull(types.ObjectType{AttrTypes: StatusCodeAssertionModelAttrTypes})
+		result.ResponseHeader = types.ListNull(types.ObjectType{AttrTypes: ResponseHeaderAssertionModelAttrTypes})
+		result.ResponseBody = types.ListNull(types.ObjectType{AttrTypes: ResponseBodyAssertionModelAttrTypes})
+		return result, nil
 	}
 
-	assertionsList := make([]attr.Value, len(assertions))
-	for i, a := range assertions {
-		assertionAttrs := map[string]attr.Value{
-			"type":     types.StringValue(a["type"].(string)),
-			"operator": types.StringValue(a["operator"].(string)),
-			"value":    types.StringValue(a["value"].(string)),
-			"selector": types.StringNull(),
+	// Separate assertions by type
+	var statusCodeAssertions []StatusCodeAssertionModel
+	var responseHeaderAssertions []ResponseHeaderAssertionModel
+	var responseBodyAssertions []ResponseBodyAssertionModel
+
+	for _, a := range assertions {
+		assertionType := a["type"].(string)
+		operator := a["operator"].(string)
+		value := a["value"].(string)
+
+		switch assertionType {
+		case "status_code":
+			statusCodeAssertions = append(statusCodeAssertions, StatusCodeAssertionModel{
+				Operator: types.StringValue(operator),
+				Value:    types.StringValue(value),
+			})
+		case "response_header":
+			if selector, ok := a["selector"]; ok && selector != nil {
+				responseHeaderAssertions = append(responseHeaderAssertions, ResponseHeaderAssertionModel{
+					Selector: types.StringValue(selector.(string)),
+					Operator: types.StringValue(operator),
+					Value:    types.StringValue(value),
+				})
+			}
+		case "response_body":
+			responseBodyAssertions = append(responseBodyAssertions, ResponseBodyAssertionModel{
+				Operator: types.StringValue(operator),
+				Value:    types.StringValue(value),
+			})
 		}
-		if selector, ok := a["selector"]; ok && selector != nil {
-			assertionAttrs["selector"] = types.StringValue(selector.(string))
-		}
-		assertionObj, _ := types.ObjectValue(SuccessAssertionModelAttrTypes, assertionAttrs)
-		assertionsList[i] = assertionObj
 	}
 
-	list, diags := types.ListValue(types.ObjectType{AttrTypes: SuccessAssertionModelAttrTypes}, assertionsList)
-	if diags.HasError() {
-		return types.ListNull(types.ObjectType{AttrTypes: SuccessAssertionModelAttrTypes}), fmt.Errorf("error creating list: %v", diags)
+	// Convert to types.List
+	if len(statusCodeAssertions) > 0 {
+		statusCodeElements := make([]attr.Value, len(statusCodeAssertions))
+		for i, a := range statusCodeAssertions {
+			attrMap := map[string]attr.Value{
+				"operator": a.Operator,
+				"value":    a.Value,
+			}
+			obj, _ := types.ObjectValue(StatusCodeAssertionModelAttrTypes, attrMap)
+			statusCodeElements[i] = obj
+		}
+		list, diags := types.ListValue(types.ObjectType{AttrTypes: StatusCodeAssertionModelAttrTypes}, statusCodeElements)
+		if diags.HasError() {
+			return result, fmt.Errorf("error creating status_code list: %v", diags)
+		}
+		result.StatusCode = list
+	} else {
+		result.StatusCode = types.ListNull(types.ObjectType{AttrTypes: StatusCodeAssertionModelAttrTypes})
 	}
-	return list, nil
+
+	if len(responseHeaderAssertions) > 0 {
+		responseHeaderElements := make([]attr.Value, len(responseHeaderAssertions))
+		for i, a := range responseHeaderAssertions {
+			attrMap := map[string]attr.Value{
+				"selector": a.Selector,
+				"operator": a.Operator,
+				"value":    a.Value,
+			}
+			obj, _ := types.ObjectValue(ResponseHeaderAssertionModelAttrTypes, attrMap)
+			responseHeaderElements[i] = obj
+		}
+		list, diags := types.ListValue(types.ObjectType{AttrTypes: ResponseHeaderAssertionModelAttrTypes}, responseHeaderElements)
+		if diags.HasError() {
+			return result, fmt.Errorf("error creating response_header list: %v", diags)
+		}
+		result.ResponseHeader = list
+	} else {
+		result.ResponseHeader = types.ListNull(types.ObjectType{AttrTypes: ResponseHeaderAssertionModelAttrTypes})
+	}
+
+	if len(responseBodyAssertions) > 0 {
+		responseBodyElements := make([]attr.Value, len(responseBodyAssertions))
+		for i, a := range responseBodyAssertions {
+			attrMap := map[string]attr.Value{
+				"operator": a.Operator,
+				"value":    a.Value,
+			}
+			obj, _ := types.ObjectValue(ResponseBodyAssertionModelAttrTypes, attrMap)
+			responseBodyElements[i] = obj
+		}
+		list, diags := types.ListValue(types.ObjectType{AttrTypes: ResponseBodyAssertionModelAttrTypes}, responseBodyElements)
+		if diags.HasError() {
+			return result, fmt.Errorf("error creating response_body list: %v", diags)
+		}
+		result.ResponseBody = list
+	} else {
+		result.ResponseBody = types.ListNull(types.ObjectType{AttrTypes: ResponseBodyAssertionModelAttrTypes})
+	}
+
+	return result, nil
 }
 
 func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -448,41 +605,70 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	// Convert success assertions (required for HTTP)
-	var assertionsModels []SuccessAssertionModel
-	resp.Diagnostics.Append(plan.SuccessAssertions.ElementsAs(ctx, &assertionsModels, false)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	var successAssertions []map[string]interface{}
 
-	successAssertions := make([]map[string]interface{}, len(assertionsModels))
-	for i, a := range assertionsModels {
-		assertionType := a.Type.ValueString()
-		assertion := map[string]interface{}{
-			"type":     assertionType,
-			"operator": a.Operator.ValueString(),
-			"value":    a.Value.ValueString(),
-		}
-
-		// For response_header type, selector is required
-		if assertionType == "response_header" {
-			if a.Selector.IsNull() || a.Selector.IsUnknown() {
-				resp.Diagnostics.AddError(
-					"Missing required selector",
-					"Selector is required for response_header assertion type",
-				)
-				return
-			}
-			assertion["selector"] = a.Selector.ValueString()
-		} else if !a.Selector.IsNull() && !a.Selector.IsUnknown() {
-			// For other types, selector should not be present
-			resp.Diagnostics.AddError(
-				"Invalid selector for assertion type",
-				fmt.Sprintf("Selector should not be specified for %s assertion type", assertionType),
-			)
+	// Process status_code assertions
+	if !plan.SuccessAssertions.StatusCode.IsNull() && !plan.SuccessAssertions.StatusCode.IsUnknown() {
+		var statusCodeModels []StatusCodeAssertionModel
+		resp.Diagnostics.Append(plan.SuccessAssertions.StatusCode.ElementsAs(ctx, &statusCodeModels, false)...)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		successAssertions[i] = assertion
+		for _, a := range statusCodeModels {
+			assertion := map[string]interface{}{
+				"type":     "status_code",
+				"operator": a.Operator.ValueString(),
+				"value":    a.Value.ValueString(),
+			}
+			successAssertions = append(successAssertions, assertion)
+		}
+	}
+
+	// Process response_header assertions
+	if !plan.SuccessAssertions.ResponseHeader.IsNull() && !plan.SuccessAssertions.ResponseHeader.IsUnknown() {
+		var responseHeaderModels []ResponseHeaderAssertionModel
+		resp.Diagnostics.Append(plan.SuccessAssertions.ResponseHeader.ElementsAs(ctx, &responseHeaderModels, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		for _, a := range responseHeaderModels {
+			assertion := map[string]interface{}{
+				"type":     "response_header",
+				"selector": a.Selector.ValueString(),
+				"operator": a.Operator.ValueString(),
+				"value":    a.Value.ValueString(),
+			}
+			successAssertions = append(successAssertions, assertion)
+		}
+	}
+
+	// Process response_body assertions
+	if !plan.SuccessAssertions.ResponseBody.IsNull() && !plan.SuccessAssertions.ResponseBody.IsUnknown() {
+		var responseBodyModels []ResponseBodyAssertionModel
+		resp.Diagnostics.Append(plan.SuccessAssertions.ResponseBody.ElementsAs(ctx, &responseBodyModels, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		for _, a := range responseBodyModels {
+			assertion := map[string]interface{}{
+				"type":     "response_body",
+				"operator": a.Operator.ValueString(),
+				"value":    a.Value.ValueString(),
+			}
+			successAssertions = append(successAssertions, assertion)
+		}
+	}
+
+	// Validate that at least one assertion type is provided
+	if len(successAssertions) == 0 {
+		resp.Diagnostics.AddError(
+			"Missing success assertions",
+			"At least one success assertion must be provided",
+		)
+		return
 	}
 
 	apiReq := &client.MonitorRequest{
@@ -530,7 +716,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 	plan.Request = requestModel
 
 	// Convert success assertions
-	assertionsList, err := ClientAssertionsToHttpTerraformList(ctx, apiResp.SuccessAssertions)
+	successAssertionsModel, err := clientAssertionsToHttpTerraformModel(ctx, apiResp.SuccessAssertions)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Converting Assertions",
@@ -538,7 +724,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 		)
 		return
 	}
-	plan.SuccessAssertions = assertionsList
+	plan.SuccessAssertions = successAssertionsModel
 
 	// Convert regions back to List
 	regionsElements := make([]attr.Value, len(apiResp.Regions))
@@ -611,7 +797,7 @@ func (r *uptimeMonitorHttpResource) Read(ctx context.Context, req resource.ReadR
 	state.Request = requestModel
 
 	// Convert success assertions
-	assertionsList, err := ClientAssertionsToHttpTerraformList(ctx, apiResp.SuccessAssertions)
+	successAssertionsModel, err := clientAssertionsToHttpTerraformModel(ctx, apiResp.SuccessAssertions)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Converting Assertions",
@@ -619,7 +805,7 @@ func (r *uptimeMonitorHttpResource) Read(ctx context.Context, req resource.ReadR
 		)
 		return
 	}
-	state.SuccessAssertions = assertionsList
+	state.SuccessAssertions = successAssertionsModel
 
 	// Convert regions back to List
 	regionsElements := make([]attr.Value, len(apiResp.Regions))
@@ -680,39 +866,70 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Convert success assertions
-	var assertionsModels []SuccessAssertionModel
-	resp.Diagnostics.Append(plan.SuccessAssertions.ElementsAs(ctx, &assertionsModels, false)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	var successAssertions []map[string]interface{}
 
-	successAssertions := make([]map[string]interface{}, len(assertionsModels))
-	for i, a := range assertionsModels {
-		assertionType := a.Type.ValueString()
-		assertion := map[string]interface{}{
-			"type":     assertionType,
-			"operator": a.Operator.ValueString(),
-			"value":    a.Value.ValueString(),
-		}
-
-		if assertionType == "response_header" {
-			if a.Selector.IsNull() || a.Selector.IsUnknown() {
-				resp.Diagnostics.AddError(
-					"Missing required selector",
-					"Selector is required for response_header assertion type",
-				)
-				return
-			}
-			assertion["selector"] = a.Selector.ValueString()
-		} else if !a.Selector.IsNull() && !a.Selector.IsUnknown() {
-			resp.Diagnostics.AddError(
-				"Invalid selector for assertion type",
-				fmt.Sprintf("Selector should not be specified for %s assertion type", assertionType),
-			)
+	// Process status_code assertions
+	if !plan.SuccessAssertions.StatusCode.IsNull() && !plan.SuccessAssertions.StatusCode.IsUnknown() {
+		var statusCodeModels []StatusCodeAssertionModel
+		resp.Diagnostics.Append(plan.SuccessAssertions.StatusCode.ElementsAs(ctx, &statusCodeModels, false)...)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		successAssertions[i] = assertion
+		for _, a := range statusCodeModels {
+			assertion := map[string]interface{}{
+				"type":     "status_code",
+				"operator": a.Operator.ValueString(),
+				"value":    a.Value.ValueString(),
+			}
+			successAssertions = append(successAssertions, assertion)
+		}
+	}
+
+	// Process response_header assertions
+	if !plan.SuccessAssertions.ResponseHeader.IsNull() && !plan.SuccessAssertions.ResponseHeader.IsUnknown() {
+		var responseHeaderModels []ResponseHeaderAssertionModel
+		resp.Diagnostics.Append(plan.SuccessAssertions.ResponseHeader.ElementsAs(ctx, &responseHeaderModels, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		for _, a := range responseHeaderModels {
+			assertion := map[string]interface{}{
+				"type":     "response_header",
+				"selector": a.Selector.ValueString(),
+				"operator": a.Operator.ValueString(),
+				"value":    a.Value.ValueString(),
+			}
+			successAssertions = append(successAssertions, assertion)
+		}
+	}
+
+	// Process response_body assertions
+	if !plan.SuccessAssertions.ResponseBody.IsNull() && !plan.SuccessAssertions.ResponseBody.IsUnknown() {
+		var responseBodyModels []ResponseBodyAssertionModel
+		resp.Diagnostics.Append(plan.SuccessAssertions.ResponseBody.ElementsAs(ctx, &responseBodyModels, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		for _, a := range responseBodyModels {
+			assertion := map[string]interface{}{
+				"type":     "response_body",
+				"operator": a.Operator.ValueString(),
+				"value":    a.Value.ValueString(),
+			}
+			successAssertions = append(successAssertions, assertion)
+		}
+	}
+
+	// Validate that at least one assertion type is provided
+	if len(successAssertions) == 0 {
+		resp.Diagnostics.AddError(
+			"Missing success assertions",
+			"At least one success assertion must be provided",
+		)
+		return
 	}
 
 	apiReq := &client.MonitorRequest{
@@ -760,7 +977,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	plan.Request = requestModel
 
 	// Convert success assertions
-	assertionsList, err := clientAssertionsToHttpTerraformList(ctx, apiResp.SuccessAssertions)
+	successAssertionsModel, err := clientAssertionsToHttpTerraformModel(ctx, apiResp.SuccessAssertions)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Converting Assertions",
@@ -768,7 +985,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 		)
 		return
 	}
-	plan.SuccessAssertions = assertionsList
+	plan.SuccessAssertions = successAssertionsModel
 
 	// Convert regions back to List
 	regionsElements := make([]attr.Value, len(apiResp.Regions))

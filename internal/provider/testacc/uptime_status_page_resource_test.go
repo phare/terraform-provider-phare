@@ -41,13 +41,12 @@ resource "phare_uptime_monitor_http" "test" {
 		url    = "https://invariance.dev"
 	}
 
-	success_assertions = [
-		{
-			type     = "status_code"
+	success_assertions {
+		status_code {
 			operator = "in"
 			value    = "2xx"
 		}
-	]
+	}
 }
 
 resource "phare_uptime_status_page" "test" {
@@ -122,13 +121,12 @@ resource "phare_uptime_monitor_http" "test" {
 		url    = "https://invariance.dev"
 	}
 
-	success_assertions = [
-		{
-			type     = "status_code"
+	success_assertions {
+		status_code {
 			operator = "in"
 			value    = "2xx"
 		}
-	]
+	}
 }
 
 resource "phare_uptime_status_page" "test" {
