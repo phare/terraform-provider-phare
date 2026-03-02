@@ -130,7 +130,7 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Computed:            true,
 				Description:         "Additional HTTP headers (max 10)",
-				MarkdownDescription: "Additional HTTP headers (max 10)",
+				MarkdownDescription: "Additional HTTP headers (max 10), [see docs](https://docs.phare.io/uptime/monitors#headers)",
 			},
 			"method": schema.StringAttribute{
 				Required:            true,
@@ -160,7 +160,7 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Sensitive:           true,
 				Description:         "Secret value in User-Agent header for authentication",
-				MarkdownDescription: "Secret value in User-Agent header for authentication",
+				MarkdownDescription: "Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent)",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},
@@ -211,7 +211,7 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 		},
 		Required:            true,
 		Description:         "List of assertions that must be true for the check to be considered successful",
-		MarkdownDescription: "List of assertions that must be true for the check to be considered successful",
+		MarkdownDescription: "List of assertions that must be true for the check to be considered successful, [see docs](https://docs.phare.io/uptime/monitors#success-assertions)",
 	}
 
 	return schema.Schema{

@@ -136,7 +136,7 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Computed:            true,
 				Description:         "Custom domain for the status page",
-				MarkdownDescription: "Custom domain for the status page",
+				MarkdownDescription: "Custom domain for the status page, [see docs](https://docs.phare.io/uptime/status-pages#custom-domain)",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},
@@ -167,7 +167,7 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 			"subdomain": schema.StringAttribute{
 				Required:            true,
 				Description:         "Subdomain for the status page",
-				MarkdownDescription: "Subdomain for the status page",
+				MarkdownDescription: "Subdomain for the status page, [see docs](https://docs.phare.io/uptime/status-pages#phare-domain)",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},

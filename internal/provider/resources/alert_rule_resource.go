@@ -33,7 +33,7 @@ func UptimeAlertRuleResourceSchema(ctx context.Context) schema.Schema {
 			"event": schema.StringAttribute{
 				Required:            true,
 				Description:         "Name of the event that will trigger the alert rule",
-				MarkdownDescription: "Name of the event that will trigger the alert rule",
+				MarkdownDescription: "Name of the event that will trigger the alert rule, [see docs](https://docs.phare.io/uptime/alerting#events)",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},

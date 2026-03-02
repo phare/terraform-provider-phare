@@ -89,7 +89,7 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			ElementType:         types.StringType,
 			Required:            true,
 			Description:         "Regions to monitor from",
-			MarkdownDescription: "Regions to monitor from",
+			MarkdownDescription: "Regions to monitor from, see the full [region list](https://docs.phare.io/uptime/monitors#regions)",
 		},
 		"status": schema.StringAttribute{
 			Computed:    true,
@@ -182,7 +182,7 @@ func UptimeMonitorTcpResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},
-				Default:             stringdefault.StaticString("tcp"),
+				Default: stringdefault.StaticString("tcp"),
 				Validators: []validator.String{
 					stringvalidator.OneOf("plain", "tls"),
 				},
