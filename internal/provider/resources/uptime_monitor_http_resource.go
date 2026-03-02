@@ -107,96 +107,93 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 	// Start with the base schema
 	baseAttributes := UptimeMonitorBaseResourceSchema(ctx)
 
-	// Add HTTP-specific attributes
-	baseAttributes["request"] = schema.SingleNestedAttribute{
-		Attributes: map[string]schema.Attribute{
-			"body": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "Request body for POST, PUT, PATCH",
-				MarkdownDescription: "Request body for POST, PUT, PATCH",
-				PlanModifiers: []planmodifier.String{
-					helpers.TrimString(),
-				},
-			},
-			"follow_redirects": schema.BoolAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "Follow HTTP redirects (default: true)",
-				MarkdownDescription: "Follow HTTP redirects (default: true)",
-				Default:             booldefault.StaticBool(true),
-			},
-			"headers": schema.ListNestedAttribute{
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
-							Required:            true,
-							Description:         "Header name",
-							MarkdownDescription: "Header name",
-							PlanModifiers: []planmodifier.String{
-								helpers.TrimString(),
-							},
-						},
-						"value": schema.StringAttribute{
-							Required:            true,
-							Description:         "Header value",
-							MarkdownDescription: "Header value",
-							PlanModifiers: []planmodifier.String{
-								helpers.TrimString(),
-							},
-						},
-					},
-				},
-				Optional:            true,
-				Computed:            true,
-				Description:         "Additional HTTP headers (max 10)",
-				MarkdownDescription: "Additional HTTP headers (max 10), [see docs](https://docs.phare.io/uptime/monitors#headers)",
-			},
-			"method": schema.StringAttribute{
-				Required:            true,
-				Description:         "HTTP method (GET, POST, PUT, PATCH, HEAD, OPTIONS)",
-				MarkdownDescription: "HTTP method (GET, POST, PUT, PATCH, HEAD, OPTIONS)",
-				PlanModifiers: []planmodifier.String{
-					helpers.TrimString(),
-				},
-				Validators: []validator.String{
-					stringvalidator.OneOf("GET", "POST", "PUT", "PATCH", "HEAD", "OPTIONS"),
-				},
-			},
-			"tls_skip_verify": schema.BoolAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "Skip TLS certificate verification (default: false)",
-				MarkdownDescription: "Skip TLS certificate verification (default: false)",
-				Default:             booldefault.StaticBool(false),
-			},
-			"url": schema.StringAttribute{
-				Required:            true,
-				Description:         "URL to monitor",
-				MarkdownDescription: "URL to monitor",
-				PlanModifiers: []planmodifier.String{
-					helpers.TrimString(),
-				},
-			},
-			"user_agent_secret": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Sensitive:           true,
-				Description:         "Secret value in User-Agent header for authentication",
-				MarkdownDescription: "Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent)",
-				PlanModifiers: []planmodifier.String{
-					helpers.TrimString(),
-				},
-			},
-		},
-		Required:            true,
-		Description:         "HTTP/HTTPS request configuration",
-		MarkdownDescription: "HTTP/HTTPS request configuration",
-	}
-
 	return schema.Schema{
 		Attributes: baseAttributes,
 		Blocks: map[string]schema.Block{
+			"request": schema.SingleNestedBlock{
+				Attributes: map[string]schema.Attribute{
+					"body": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Request body for POST, PUT, PATCH",
+						MarkdownDescription: "Request body for POST, PUT, PATCH",
+						PlanModifiers: []planmodifier.String{
+							helpers.TrimString(),
+						},
+					},
+					"follow_redirects": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Follow HTTP redirects (default: true)",
+						MarkdownDescription: "Follow HTTP redirects (default: true)",
+						Default:             booldefault.StaticBool(true),
+					},
+					"method": schema.StringAttribute{
+						Required:            true,
+						Description:         "HTTP method (GET, POST, PUT, PATCH, HEAD, OPTIONS)",
+						MarkdownDescription: "HTTP method (GET, POST, PUT, PATCH, HEAD, OPTIONS)",
+						PlanModifiers: []planmodifier.String{
+							helpers.TrimString(),
+						},
+						Validators: []validator.String{
+							stringvalidator.OneOf("GET", "POST", "PUT", "PATCH", "HEAD", "OPTIONS"),
+						},
+					},
+					"tls_skip_verify": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Skip TLS certificate verification (default: false)",
+						MarkdownDescription: "Skip TLS certificate verification (default: false)",
+						Default:             booldefault.StaticBool(false),
+					},
+					"url": schema.StringAttribute{
+						Required:            true,
+						Description:         "URL to monitor",
+						MarkdownDescription: "URL to monitor",
+						PlanModifiers: []planmodifier.String{
+							helpers.TrimString(),
+						},
+					},
+					"user_agent_secret": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Secret value in User-Agent header for authentication",
+						MarkdownDescription: "Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent)",
+						PlanModifiers: []planmodifier.String{
+							helpers.TrimString(),
+						},
+					},
+				},
+				Blocks: map[string]schema.Block{
+					"headers": schema.ListNestedBlock{
+						NestedObject: schema.NestedBlockObject{
+							Attributes: map[string]schema.Attribute{
+								"name": schema.StringAttribute{
+									Required:            true,
+									Description:         "Header name",
+									MarkdownDescription: "Header name",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+								},
+								"value": schema.StringAttribute{
+									Required:            true,
+									Description:         "Header value",
+									MarkdownDescription: "Header value",
+									PlanModifiers: []planmodifier.String{
+										helpers.TrimString(),
+									},
+								},
+							},
+						},
+						Description:         "Additional HTTP headers (max 10)",
+						MarkdownDescription: "Additional HTTP headers (max 10), [see docs](https://docs.phare.io/uptime/monitors#headers)",
+					},
+				},
+				Description:         "HTTP/HTTPS request configuration",
+				MarkdownDescription: "HTTP/HTTPS request configuration",
+			},
 			"success_assertions": schema.SingleNestedBlock{
 				Blocks: map[string]schema.Block{
 					"status_code": schema.ListNestedBlock{

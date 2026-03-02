@@ -1,7 +1,7 @@
 resource "phare_uptime_monitor_tcp" "service" {
   name = "TCP Service"
 
-  request = {
+  request {
     host            = "phare.io"
     port            = 443
     connection      = "tls"

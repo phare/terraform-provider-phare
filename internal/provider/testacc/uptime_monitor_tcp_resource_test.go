@@ -30,7 +30,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 
   name = "TCP Service"
 
-  request = {
+  request {
     host            = "invariance.dev"
     port            = 443
     connection      = "tls"
@@ -72,7 +72,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 
   name = "TCP Service Updated"
 
-  request = {
+  request {
     host            = "invariance.dev"
     port            = 80
     connection      = "plain"

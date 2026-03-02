@@ -167,50 +167,49 @@ func UptimeMonitorTcpResourceSchema(ctx context.Context) schema.Schema {
 	// Start with the base schema
 	baseAttributes := UptimeMonitorBaseResourceSchema(ctx)
 
-	// Add TCP-specific attributes
-	baseAttributes["request"] = schema.SingleNestedAttribute{
-		Attributes: map[string]schema.Attribute{
-			"connection": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "Connection type (plain or tls)",
-				MarkdownDescription: "Connection type (plain or tls)",
-				PlanModifiers: []planmodifier.String{
-					helpers.TrimString(),
-				},
-				Default: stringdefault.StaticString("plain"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("plain", "tls"),
-				},
-			},
-			"host": schema.StringAttribute{
-				Required:            true,
-				Description:         "Hostname or IP address",
-				MarkdownDescription: "Hostname or IP address",
-				PlanModifiers: []planmodifier.String{
-					helpers.TrimString(),
-				},
-			},
-			"port": schema.Int64Attribute{
-				Required:            true,
-				Description:         "Port number",
-				MarkdownDescription: "Port number",
-			},
-			"tls_skip_verify": schema.BoolAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "Skip TLS certificate verification (default: false)",
-				MarkdownDescription: "Skip TLS certificate verification (default: false)",
-				Default:             booldefault.StaticBool(false),
-			},
-		},
-		Required:            true,
-		Description:         "TCP request configuration",
-		MarkdownDescription: "TCP request configuration",
-	}
-
 	return schema.Schema{
 		Attributes: baseAttributes,
+		Blocks: map[string]schema.Block{
+			"request": schema.SingleNestedBlock{
+				Attributes: map[string]schema.Attribute{
+					"connection": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Connection type (plain or tls)",
+						MarkdownDescription: "Connection type (plain or tls)",
+						PlanModifiers: []planmodifier.String{
+							helpers.TrimString(),
+						},
+						Default: stringdefault.StaticString("plain"),
+						Validators: []validator.String{
+							stringvalidator.OneOf("plain", "tls"),
+						},
+					},
+					"host": schema.StringAttribute{
+						Required:            true,
+						Description:         "Hostname or IP address",
+						MarkdownDescription: "Hostname or IP address",
+						PlanModifiers: []planmodifier.String{
+							helpers.TrimString(),
+						},
+					},
+					"port": schema.Int64Attribute{
+						Required:            true,
+						Description:         "Port number",
+						MarkdownDescription: "Port number",
+					},
+					"tls_skip_verify": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Skip TLS certificate verification (default: false)",
+						MarkdownDescription: "Skip TLS certificate verification (default: false)",
+						Default:             booldefault.StaticBool(false),
+					},
+				},
+				Description:         "TCP request configuration",
+				MarkdownDescription: "TCP request configuration",
+			},
+		},
 	}
 }
 

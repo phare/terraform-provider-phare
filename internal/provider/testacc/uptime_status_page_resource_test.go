@@ -36,7 +36,7 @@ resource "phare_uptime_monitor_http" "test" {
 	incident_confirmations = 3
 	recovery_confirmations = 2
 
-	request = {
+	request {
 		method = "HEAD"
 		url    = "https://invariance.dev"
 	}
@@ -116,7 +116,7 @@ resource "phare_uptime_monitor_http" "test" {
 	incident_confirmations = 3
 	recovery_confirmations = 2
 
-	request = {
+	request {
 		method = "HEAD"
 		url    = "https://invariance.dev"
 	}

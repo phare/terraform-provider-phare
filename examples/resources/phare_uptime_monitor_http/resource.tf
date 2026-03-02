@@ -1,18 +1,17 @@
 resource "phare_uptime_monitor_http" "website" {
   name = "Website"
 
-  request = {
+  request {
     method            = "HEAD"
     url               = "https://docs.phare.io/introduction"
     tls_skip_verify   = false
     follow_redirects  = true
     user_agent_secret = "definitely-not-a-bot"
-    headers = [
-      {
-        name  = "X-Phare-Says"
-        value = "Hello world!"
-      }
-    ]
+
+    headers {
+      name  = "X-Phare-Says"
+      value = "Hello world!"
+    }
   }
 
   interval               = 60
