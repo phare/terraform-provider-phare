@@ -64,7 +64,24 @@ func ProjectResourceSchema(ctx context.Context) schema.Schema {
 					helpers.TrimString(),
 				},
 			},
-			"settings": schema.SingleNestedAttribute{
+			"slug": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Description:         "Project slug (auto-generated from name)",
+				MarkdownDescription: "Project slug (auto-generated from name)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"updated_at": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Description:         "Date of last update",
+				MarkdownDescription: "Date of last update",
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"settings": schema.SingleNestedBlock{
 				Attributes: map[string]schema.Attribute{
 					"incident_merging_time_window": schema.Int64Attribute{
 						Optional:            true,
@@ -91,25 +108,8 @@ func ProjectResourceSchema(ctx context.Context) schema.Schema {
 						Default:             booldefault.StaticBool(true),
 					},
 				},
-				Optional:            true,
-				Computed:            true,
 				Description:         "Project settings",
 				MarkdownDescription: "Project settings",
-			},
-			"slug": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "Project slug (auto-generated from name)",
-				MarkdownDescription: "Project slug (auto-generated from name)",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"updated_at": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "Date of last update",
-				MarkdownDescription: "Date of last update",
 			},
 		},
 	}

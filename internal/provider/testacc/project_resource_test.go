@@ -29,7 +29,7 @@ resource "phare_project" "test" {
 	name    = "Test Project"
 	members = data.phare_users.team.users[*].id
 
-	settings = {
+	settings {
 		use_incident_ai             = true
 		use_incident_merging        = true
 		incident_merging_time_window = 60
@@ -57,7 +57,7 @@ resource "phare_project" "test" {
 	name    = "Test Project"
 	members = data.phare_users.team.users[*].id
 
-	settings = {
+	settings {
 		use_incident_ai             = false
 		use_incident_merging        = true
 		incident_merging_time_window = 30
