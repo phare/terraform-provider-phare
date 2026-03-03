@@ -32,7 +32,7 @@ data "phare_uptime_status_pages" "all" {}
 
 Read-Only:
 
-- `colors` (Attributes) Colors to customize the status page appearance (see [below for nested schema](#nestedatt--status_pages--colors))
+- `color_scheme` (String) Available color schemes for the status page (all, dark, or light)
 - `components` (Attributes List) List of components (monitors) shown on the status page (see [below for nested schema](#nestedatt--status_pages--components))
 - `created_at` (String) Creation timestamp
 - `description` (String) Status page HTML description
@@ -42,23 +42,11 @@ Read-Only:
 - `project_id` (Number) Parent project ID
 - `search_engine_indexed` (Boolean) Whether search engines can index the page
 - `subdomain` (String) Subdomain for the status page
+- `theme` (Attributes) Theme settings to customize the status page (see [below for nested schema](#nestedatt--status_pages--theme))
 - `timeframe` (Number) Number of days of status/incident history to display
 - `title` (String) Status page HTML title
 - `updated_at` (String) Last update timestamp
 - `website_url` (String) URL to redirect users from the status page
-
-<a id="nestedatt--status_pages--colors"></a>
-### Nested Schema for `status_pages.colors`
-
-Read-Only:
-
-- `degraded_performance` (String) Color for degraded performance status
-- `empty` (String) Color for empty/no data status
-- `maintenance` (String) Color for maintenance status
-- `major_outage` (String) Color for major outage status
-- `operational` (String) Color for operational status
-- `partial_outage` (String) Color for partial outage status
-
 
 <a id="nestedatt--status_pages--components"></a>
 ### Nested Schema for `status_pages.components`
@@ -67,3 +55,47 @@ Read-Only:
 
 - `componentable_id` (Number) ID of the component
 - `componentable_type` (String) Type of component
+
+
+<a id="nestedatt--status_pages--theme"></a>
+### Nested Schema for `status_pages.theme`
+
+Read-Only:
+
+- `border_width` (Number) Border width (0-3)
+- `dark` (Attributes) Dark theme colors (see [below for nested schema](#nestedatt--status_pages--theme--dark))
+- `light` (Attributes) Light theme colors (see [below for nested schema](#nestedatt--status_pages--theme--light))
+- `rounded` (Boolean) Whether to use rounded corners
+
+<a id="nestedatt--status_pages--theme--dark"></a>
+### Nested Schema for `status_pages.theme.dark`
+
+Read-Only:
+
+- `background` (String) Background color
+- `background_card` (String) Card background color
+- `degraded_performance` (String) Color for degraded performance status
+- `empty` (String) Color for empty/no data status
+- `foreground` (String) Foreground/text color
+- `foreground_muted` (String) Muted foreground/text color
+- `maintenance` (String) Color for maintenance status
+- `major_outage` (String) Color for major outage status
+- `operational` (String) Color for operational status
+- `partial_outage` (String) Color for partial outage status
+
+
+<a id="nestedatt--status_pages--theme--light"></a>
+### Nested Schema for `status_pages.theme.light`
+
+Read-Only:
+
+- `background` (String) Background color
+- `background_card` (String) Card background color
+- `degraded_performance` (String) Color for degraded performance status
+- `empty` (String) Color for empty/no data status
+- `foreground` (String) Foreground/text color
+- `foreground_muted` (String) Muted foreground/text color
+- `maintenance` (String) Color for maintenance status
+- `major_outage` (String) Color for major outage status
+- `operational` (String) Color for operational status
+- `partial_outage` (String) Color for partial outage status

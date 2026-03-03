@@ -16,7 +16,7 @@ Manages a TCP uptime monitor in Phare. Monitors service availability using TCP c
 resource "phare_uptime_monitor_tcp" "service" {
   name = "TCP Service"
 
-  request = {
+  request {
     host            = "phare.io"
     port            = 443
     connection      = "tls"
@@ -40,24 +40,24 @@ resource "phare_uptime_monitor_tcp" "service" {
 - `interval` (Number) Monitoring interval in seconds (30, 60, 120, 180, 300, 600, 900, 1800, 3600)
 - `name` (String) Monitor name
 - `recovery_confirmations` (Number) Number of uninterrupted successful checks required to resolve an incident (1-5)
-- `regions` (List of String) Regions to monitor from
-- `request` (Attributes) TCP request configuration (see [below for nested schema](#nestedatt--request))
+- `regions` (List of String) Regions to monitor from, see the full [region list](https://docs.phare.io/uptime/monitors#regions)
 - `timeout` (Number) Monitoring timeout in milliseconds
 
 ### Optional
 
-- `paused` (Boolean) Whether the monitor is paused
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
+- `request` (Block, Optional) TCP request configuration (see [below for nested schema](#nestedblock--request))
 
 ### Read-Only
 
 - `created_at` (String) Date of creation
 - `id` (Number) Monitor ID
+- `paused` (Boolean) Whether the monitor is paused
 - `project_id` (Number) Parent project ID
 - `status` (String) Monitor status
 - `updated_at` (String) Date of last update
 
-<a id="nestedatt--request"></a>
+<a id="nestedblock--request"></a>
 ### Nested Schema for `request`
 
 Required:
@@ -67,5 +67,5 @@ Required:
 
 Optional:
 
-- `connection` (String) Connection type (plain or tls, defaults to plain)
+- `connection` (String) Connection type (plain or tls)
 - `tls_skip_verify` (Boolean) Skip TLS certificate verification (default: false)

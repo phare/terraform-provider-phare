@@ -16,18 +16,17 @@ Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and
 resource "phare_uptime_monitor_http" "website" {
   name = "Website"
 
-  request = {
+  request {
     method            = "HEAD"
     url               = "https://docs.phare.io/introduction"
     tls_skip_verify   = false
     follow_redirects  = true
     user_agent_secret = "definitely-not-a-bot"
-    headers = [
-      {
-        name  = "X-Phare-Says"
-        value = "Hello world!"
-      }
-    ]
+
+    headers {
+      name  = "X-Phare-Says"
+      value = "Hello world!"
+    }
   }
 
   interval               = 60
@@ -36,13 +35,34 @@ resource "phare_uptime_monitor_http" "website" {
   recovery_confirmations = 3
   regions                = ["as-jpn-hnd"]
 
-  success_assertions = [
-    {
-      type     = "status_code"
+  success_assertions {
+    status_code {
       operator = "in"
-      value    = "2xx,30x,418"
+      value    = "2xx"
     }
-  ]
+
+    response_header {
+      selector = "Content-Type"
+      operator = "equals"
+      value    = "application/json"
+    }
+
+    response_header {
+      selector = "Cache-Control"
+      operator = "not_equals"
+      value    = "no-cache"
+    }
+
+    response_body {
+      operator = "contains"
+      value    = "Hello"
+    }
+
+    response_body {
+      operator = "not_contains"
+      value    = "Error"
+    }
+  }
 }
 ```
 
@@ -55,25 +75,25 @@ resource "phare_uptime_monitor_http" "website" {
 - `interval` (Number) Monitoring interval in seconds (30, 60, 120, 180, 300, 600, 900, 1800, 3600)
 - `name` (String) Monitor name
 - `recovery_confirmations` (Number) Number of uninterrupted successful checks required to resolve an incident (1-5)
-- `regions` (List of String) Regions to monitor from
-- `request` (Attributes) HTTP/HTTPS request configuration (see [below for nested schema](#nestedatt--request))
-- `success_assertions` (Attributes List) List of assertions that must be true for the check to be considered successful (see [below for nested schema](#nestedatt--success_assertions))
+- `regions` (List of String) Regions to monitor from, see the full [region list](https://docs.phare.io/uptime/monitors#regions)
 - `timeout` (Number) Monitoring timeout in milliseconds
 
 ### Optional
 
-- `paused` (Boolean) Whether the monitor is paused
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
+- `request` (Block, Optional) HTTP/HTTPS request configuration (see [below for nested schema](#nestedblock--request))
+- `success_assertions` (Block, Optional) List of assertions that must be true for the check to be considered successful, [see docs](https://docs.phare.io/uptime/monitors#success-assertions) (see [below for nested schema](#nestedblock--success_assertions))
 
 ### Read-Only
 
 - `created_at` (String) Date of creation
 - `id` (Number) Monitor ID
+- `paused` (Boolean) Whether the monitor is paused
 - `project_id` (Number) Parent project ID
 - `status` (String) Monitor status
 - `updated_at` (String) Date of last update
 
-<a id="nestedatt--request"></a>
+<a id="nestedblock--request"></a>
 ### Nested Schema for `request`
 
 Required:
@@ -85,11 +105,11 @@ Optional:
 
 - `body` (String) Request body for POST, PUT, PATCH
 - `follow_redirects` (Boolean) Follow HTTP redirects (default: true)
-- `headers` (Attributes List) Additional HTTP headers (max 10) (see [below for nested schema](#nestedatt--request--headers))
+- `headers` (Block List) Additional HTTP headers (max 10), [see docs](https://docs.phare.io/uptime/monitors#headers) (see [below for nested schema](#nestedblock--request--headers))
 - `tls_skip_verify` (Boolean) Skip TLS certificate verification (default: false)
-- `user_agent_secret` (String, Sensitive) Secret value in User-Agent header for authentication
+- `user_agent_secret` (String, Sensitive) Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent)
 
-<a id="nestedatt--request--headers"></a>
+<a id="nestedblock--request--headers"></a>
 ### Nested Schema for `request.headers`
 
 Required:
@@ -99,15 +119,38 @@ Required:
 
 
 
-<a id="nestedatt--success_assertions"></a>
+<a id="nestedblock--success_assertions"></a>
 ### Nested Schema for `success_assertions`
-
-Required:
-
-- `operator` (String) Operator (in, not_in, equals, not_equals, contains, not_contains)
-- `type` (String) Assertion type (status_code, response_header, response_body)
-- `value` (String) Value to assert against
 
 Optional:
 
-- `selector` (String) Selector (header name for response_header type)
+- `response_body` (Block List) Response body assertions (see [below for nested schema](#nestedblock--success_assertions--response_body))
+- `response_header` (Block List) Response header assertions (see [below for nested schema](#nestedblock--success_assertions--response_header))
+- `status_code` (Block List) Status code assertions (see [below for nested schema](#nestedblock--success_assertions--status_code))
+
+<a id="nestedblock--success_assertions--response_body"></a>
+### Nested Schema for `success_assertions.response_body`
+
+Required:
+
+- `operator` (String) Operator to use for the assertion (contains, not_contains)
+- `value` (String) A word or sentence to check in the response body
+
+
+<a id="nestedblock--success_assertions--response_header"></a>
+### Nested Schema for `success_assertions.response_header`
+
+Required:
+
+- `operator` (String) Operator to use for the assertion (equals, not_equals)
+- `selector` (String) The name of the header to assert
+- `value` (String) The value of the header to assert
+
+
+<a id="nestedblock--success_assertions--status_code"></a>
+### Nested Schema for `success_assertions.status_code`
+
+Required:
+
+- `operator` (String) Operator to use for the assertion (in, not_in)
+- `value` (String) A comma-separated list of status code values, you can use x as a wildcard for any digit

@@ -50,21 +50,22 @@ resource "phare_uptime_status_page" "main" {
 
 ### Required
 
-- `colors` (Attributes) Colors to customize the status page appearance (see [below for nested schema](#nestedatt--colors))
 - `description` (String) Status page description
 - `name` (String) Status page name
 - `search_engine_indexed` (Boolean) Whether search engines can index the page
-- `subdomain` (String) Subdomain for the status page
+- `subdomain` (String) Subdomain for the status page, [see docs](https://docs.phare.io/uptime/status-pages#phare-domain)
 - `timeframe` (Number) Number of days of status/incident history to display (30, 60, or 90)
 - `title` (String) Status page title
 - `website_url` (String) URL to redirect users from the status page
 
 ### Optional
 
+- `color_scheme` (String) Available color schemes for the status page (all, dark, or light). Defaults to all.
 - `components` (Attributes List) List of components (monitors) to show on the status page (see [below for nested schema](#nestedatt--components))
-- `domain` (String) Custom domain for the status page
+- `domain` (String) Custom domain for the status page, [see docs](https://docs.phare.io/uptime/status-pages#custom-domain)
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
 - `subscription_channels` (List of String) Subscription channels available (rss, atom)
+- `theme` (Block, Optional) Theme settings to customize the status page (see [below for nested schema](#nestedblock--theme))
 
 ### Read-Only
 
@@ -73,19 +74,6 @@ resource "phare_uptime_status_page" "main" {
 - `project_id` (Number) Parent project ID
 - `updated_at` (String) Date of last update
 
-<a id="nestedatt--colors"></a>
-### Nested Schema for `colors`
-
-Required:
-
-- `degraded_performance` (String) Color for degraded performance status (e.g., #fbbf24)
-- `empty` (String) Color for empty/no data status (e.g., #d3d3d3)
-- `maintenance` (String) Color for maintenance status (e.g., #6366f1)
-- `major_outage` (String) Color for major outage status (e.g., #ef4444)
-- `operational` (String) Color for operational status (e.g., #16a34a)
-- `partial_outage` (String) Color for partial outage status (e.g., #f59e0b)
-
-
 <a id="nestedatt--components"></a>
 ### Nested Schema for `components`
 
@@ -93,3 +81,47 @@ Required:
 
 - `componentable_id` (Number) ID of the monitor to display on the status page
 - `componentable_type` (String) Type of component (uptime/monitor)
+
+
+<a id="nestedblock--theme"></a>
+### Nested Schema for `theme`
+
+Optional:
+
+- `border_width` (Number) Border width (0-3)
+- `dark` (Block, Optional) Dark theme colors (see [below for nested schema](#nestedblock--theme--dark))
+- `light` (Block, Optional) Light theme colors (see [below for nested schema](#nestedblock--theme--light))
+- `rounded` (Boolean) Whether to use rounded corners
+
+<a id="nestedblock--theme--dark"></a>
+### Nested Schema for `theme.dark`
+
+Required:
+
+- `background` (String) Background color (e.g., #111111)
+- `background_card` (String) Card background color (e.g., #1a1a1a)
+- `degraded_performance` (String) Color for degraded performance status (e.g., #fbbf24)
+- `empty` (String) Color for empty/no data status (e.g., #d3d3d3)
+- `foreground` (String) Foreground/text color (e.g., #ffffff)
+- `foreground_muted` (String) Muted foreground/text color (e.g., #959595)
+- `maintenance` (String) Color for maintenance status (e.g., #6366f1)
+- `major_outage` (String) Color for major outage status (e.g., #ef4444)
+- `operational` (String) Color for operational status (e.g., #16a34a)
+- `partial_outage` (String) Color for partial outage status (e.g., #f59e0b)
+
+
+<a id="nestedblock--theme--light"></a>
+### Nested Schema for `theme.light`
+
+Required:
+
+- `background` (String) Background color (e.g., #ffffff)
+- `background_card` (String) Card background color (e.g., #fafafa)
+- `degraded_performance` (String) Color for degraded performance status (e.g., #fbbf24)
+- `empty` (String) Color for empty/no data status (e.g., #d3d3d3)
+- `foreground` (String) Foreground/text color (e.g., #000000)
+- `foreground_muted` (String) Muted foreground/text color (e.g., #737373)
+- `maintenance` (String) Color for maintenance status (e.g., #6366f1)
+- `major_outage` (String) Color for major outage status (e.g., #ef4444)
+- `operational` (String) Color for operational status (e.g., #16a34a)
+- `partial_outage` (String) Color for partial outage status (e.g., #f59e0b)

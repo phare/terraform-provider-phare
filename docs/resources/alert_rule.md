@@ -82,7 +82,7 @@ resource "phare_alert_rule" "monitor_certificate_expiring" {
 
 ### Required
 
-- `event` (String) Name of the event that will trigger the alert rule
+- `event` (String) Name of the event that will trigger the alert rule, [see docs](https://docs.phare.io/uptime/alerting#events)
 - `integration_id` (Number) The ID of the integration used to send notifications
 - `rate_limit` (Number) Minimum time in minutes between alert executions
 - `scope` (String) Scope of the alert rule. Must be either 'organization' or 'project'. When set to 'project', the alert rule is scoped to the project specified by project_scope or the provider-level project. When set to 'organization', the alert rule applies to the entire organization.

@@ -21,7 +21,7 @@ resource "phare_project" "test" {
   name    = "Terraform"
   members = data.phare_users.team.users[*].id
 
-  settings = {
+  settings {
     use_incident_ai              = true
     use_incident_merging         = true
     incident_merging_time_window = 30
@@ -41,11 +41,11 @@ resource "phare_project" "test" {
 
 - `created_at` (String) Date of creation
 - `id` (Number) Project ID
-- `settings` (Attributes) Project settings (see [below for nested schema](#nestedatt--settings))
+- `settings` (Block, Optional) Project settings (see [below for nested schema](#nestedblock--settings))
 - `slug` (String) Project slug (auto-generated from name)
 - `updated_at` (String) Date of last update
 
-<a id="nestedatt--settings"></a>
+<a id="nestedblock--settings"></a>
 ### Nested Schema for `settings`
 
 Optional:
