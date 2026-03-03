@@ -14,20 +14,33 @@ type StatusPageRequest struct {
 	Description          string                `json:"description"`
 	SearchEngineIndexed  bool                  `json:"search_engine_indexed"`
 	WebsiteURL           string                `json:"website_url"`
-	Colors               *StatusPageColors     `json:"colors,omitempty"`
+	ColorScheme          *string               `json:"color_scheme,omitempty"`
+	Theme                *StatusPageTheme      `json:"theme,omitempty"`
 	Components           []StatusPageComponent `json:"components"`
 	Timeframe            *int64                `json:"timeframe,omitempty"`
 	SubscriptionChannels []string              `json:"subscription_channels,omitempty"`
 }
 
-// StatusPageColors represents color customization for a status page.
-type StatusPageColors struct {
+// StatusPageTheme represents theme customization for a status page.
+type StatusPageTheme struct {
+	Light       *ThemeColors `json:"light,omitempty"`
+	Dark        *ThemeColors `json:"dark,omitempty"`
+	Rounded     *bool        `json:"rounded,omitempty"`
+	BorderWidth *int64       `json:"border_width,omitempty"`
+}
+
+// ThemeColors represents color values for a theme (light or dark).
+type ThemeColors struct {
 	Operational         string `json:"operational"`
-	DegradedPerformance string `json:"degradedPerformance"`
-	PartialOutage       string `json:"partialOutage"`
-	MajorOutage         string `json:"majorOutage"`
+	DegradedPerformance string `json:"degraded_performance"`
+	PartialOutage       string `json:"partial_outage"`
+	MajorOutage         string `json:"major_outage"`
 	Maintenance         string `json:"maintenance"`
 	Empty               string `json:"empty"`
+	Background          string `json:"background"`
+	Foreground          string `json:"foreground"`
+	ForegroundMuted     string `json:"foreground_muted"`
+	BackgroundCard      string `json:"background_card"`
 }
 
 // StatusPageComponent represents a component on a status page.
@@ -47,7 +60,8 @@ type StatusPageResponse struct {
 	Description          string                `json:"description"`
 	SearchEngineIndexed  bool                  `json:"search_engine_indexed"`
 	WebsiteURL           string                `json:"website_url"`
-	Colors               *StatusPageColors     `json:"colors,omitempty"`
+	ColorScheme          *string               `json:"color_scheme,omitempty"`
+	Theme                *StatusPageTheme      `json:"theme,omitempty"`
 	Components           []StatusPageComponent `json:"components"`
 	Timeframe            *int64                `json:"timeframe,omitempty"`
 	SubscriptionChannels []string              `json:"subscription_channels,omitempty"`

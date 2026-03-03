@@ -60,13 +60,35 @@ resource "phare_uptime_status_page" "test" {
   subdomain             = "invariance"
   timeframe             = 30
 
-  colors = {
-    operational          = "#16a34a"
-    degraded_performance = "#fbbf24"
-    partial_outage       = "#f59e0b"
-    major_outage         = "#ef4444"
-    maintenance          = "#6366f1"
-    empty                = "#d3d3d3"
+  theme {
+    rounded      = true
+    border_width = 2
+
+    light {
+      operational          = "#16a34a"
+      degraded_performance = "#fbbf24"
+      partial_outage       = "#f59e0b"
+      major_outage         = "#ef4444"
+      maintenance          = "#6366f1"
+      empty                = "#d3d3d3"
+      background           = "#ffffff"
+      foreground           = "#000000"
+      foreground_muted     = "#737373"
+      background_card      = "#fafafa"
+    }
+
+    dark {
+      operational          = "#16a34a"
+      degraded_performance = "#fbbf24"
+      partial_outage       = "#f59e0b"
+      major_outage         = "#ef4444"
+      maintenance          = "#6366f1"
+      empty                = "#d3d3d3"
+      background           = "#111111"
+      foreground           = "#ffffff"
+      foreground_muted     = "#959595"
+      background_card      = "#1a1a1a"
+    }
   }
 
   components = [
@@ -85,12 +107,14 @@ resource "phare_uptime_status_page" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "search_engine_indexed", "false"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "subdomain", "invariance"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "timeframe", "30"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "colors.operational", "#16a34a"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "colors.degraded_performance", "#fbbf24"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "colors.partial_outage", "#f59e0b"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "colors.major_outage", "#ef4444"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "colors.maintenance", "#6366f1"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "colors.empty", "#d3d3d3"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "color_scheme", "all"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.rounded", "true"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.border_width", "2"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.light.operational", "#16a34a"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.light.degraded_performance", "#fbbf24"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.light.background", "#ffffff"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.dark.operational", "#16a34a"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.dark.background", "#111111"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.componentable_type", "uptime/monitor"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "components.0.componentable_id"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "id"),
@@ -140,13 +164,35 @@ resource "phare_uptime_status_page" "test" {
   subdomain             = "invariance"
   timeframe             = 60
 
-  colors = {
-    operational          = "#16a34a"
-    degraded_performance = "#fbbf24"
-    partial_outage       = "#f59e0b"
-    major_outage         = "#ef4444"
-    maintenance          = "#6366f1"
-    empty                = "#d3d3d3"
+  theme {
+    rounded      = true
+    border_width = 2
+
+    light {
+      operational          = "#16a34a"
+      degraded_performance = "#fbbf24"
+      partial_outage       = "#f59e0b"
+      major_outage         = "#ef4444"
+      maintenance          = "#6366f1"
+      empty                = "#d3d3d3"
+      background           = "#ffffff"
+      foreground           = "#000000"
+      foreground_muted     = "#737373"
+      background_card      = "#fafafa"
+    }
+
+    dark {
+      operational          = "#16a34a"
+      degraded_performance = "#fbbf24"
+      partial_outage       = "#f59e0b"
+      major_outage         = "#ef4444"
+      maintenance          = "#6366f1"
+      empty                = "#d3d3d3"
+      background           = "#111111"
+      foreground           = "#ffffff"
+      foreground_muted     = "#959595"
+      background_card      = "#1a1a1a"
+    }
   }
 
   components = [

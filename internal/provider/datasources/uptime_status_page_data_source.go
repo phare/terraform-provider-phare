@@ -40,8 +40,9 @@ type statusPageModel struct {
 	Description         types.String `tfsdk:"description"`
 	SearchEngineIndexed types.Bool   `tfsdk:"search_engine_indexed"`
 	WebsiteURL          types.String `tfsdk:"website_url"`
+	ColorScheme         types.String `tfsdk:"color_scheme"`
 	Timeframe           types.Int64  `tfsdk:"timeframe"`
-	Colors              types.Object `tfsdk:"colors"`
+	Theme               types.Object `tfsdk:"theme"`
 	Components          types.List   `tfsdk:"components"`
 	CreatedAt           types.String `tfsdk:"created_at"`
 	UpdatedAt           types.String `tfsdk:"updated_at"`
@@ -77,40 +78,101 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 		model.Timeframe = types.Int64Null()
 	}
 
-	// Map colors
-	if page.Colors != nil {
-		colorsObj, diags := types.ObjectValue(
-			map[string]attr.Type{
-				"operational":          types.StringType,
-				"degraded_performance": types.StringType,
-				"partial_outage":       types.StringType,
-				"major_outage":         types.StringType,
-				"maintenance":          types.StringType,
-				"empty":                types.StringType,
-			},
-			map[string]attr.Value{
-				"operational":          types.StringValue(page.Colors.Operational),
-				"degraded_performance": types.StringValue(page.Colors.DegradedPerformance),
-				"partial_outage":       types.StringValue(page.Colors.PartialOutage),
-				"major_outage":         types.StringValue(page.Colors.MajorOutage),
-				"maintenance":          types.StringValue(page.Colors.Maintenance),
-				"empty":                types.StringValue(page.Colors.Empty),
-			},
-		)
+	if page.ColorScheme != nil {
+		model.ColorScheme = types.StringValue(*page.ColorScheme)
+	} else {
+		model.ColorScheme = types.StringNull()
+	}
+
+	// Map theme
+	themeColorsAttrTypes := map[string]attr.Type{
+		"operational":          types.StringType,
+		"degraded_performance": types.StringType,
+		"partial_outage":       types.StringType,
+		"major_outage":         types.StringType,
+		"maintenance":          types.StringType,
+		"empty":                types.StringType,
+		"background":           types.StringType,
+		"foreground":           types.StringType,
+		"foreground_muted":     types.StringType,
+		"background_card":      types.StringType,
+	}
+
+	themeAttrTypes := map[string]attr.Type{
+		"light":        types.ObjectType{AttrTypes: themeColorsAttrTypes},
+		"dark":         types.ObjectType{AttrTypes: themeColorsAttrTypes},
+		"rounded":      types.BoolType,
+		"border_width": types.Int64Type,
+	}
+
+	if page.Theme != nil {
+		themeAttrs := map[string]attr.Value{
+			"light":        types.ObjectNull(themeColorsAttrTypes),
+			"dark":         types.ObjectNull(themeColorsAttrTypes),
+			"rounded":      types.BoolNull(),
+			"border_width": types.Int64Null(),
+		}
+
+		// Map light theme colors
+		if page.Theme.Light != nil {
+			lightAttrs := map[string]attr.Value{
+				"operational":          types.StringValue(page.Theme.Light.Operational),
+				"degraded_performance": types.StringValue(page.Theme.Light.DegradedPerformance),
+				"partial_outage":       types.StringValue(page.Theme.Light.PartialOutage),
+				"major_outage":         types.StringValue(page.Theme.Light.MajorOutage),
+				"maintenance":          types.StringValue(page.Theme.Light.Maintenance),
+				"empty":                types.StringValue(page.Theme.Light.Empty),
+				"background":           types.StringValue(page.Theme.Light.Background),
+				"foreground":           types.StringValue(page.Theme.Light.Foreground),
+				"foreground_muted":     types.StringValue(page.Theme.Light.ForegroundMuted),
+				"background_card":      types.StringValue(page.Theme.Light.BackgroundCard),
+			}
+			lightObj, diags := types.ObjectValue(themeColorsAttrTypes, lightAttrs)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return statusPageModel{}
+			}
+			themeAttrs["light"] = lightObj
+		}
+
+		// Map dark theme colors
+		if page.Theme.Dark != nil {
+			darkAttrs := map[string]attr.Value{
+				"operational":          types.StringValue(page.Theme.Dark.Operational),
+				"degraded_performance": types.StringValue(page.Theme.Dark.DegradedPerformance),
+				"partial_outage":       types.StringValue(page.Theme.Dark.PartialOutage),
+				"major_outage":         types.StringValue(page.Theme.Dark.MajorOutage),
+				"maintenance":          types.StringValue(page.Theme.Dark.Maintenance),
+				"empty":                types.StringValue(page.Theme.Dark.Empty),
+				"background":           types.StringValue(page.Theme.Dark.Background),
+				"foreground":           types.StringValue(page.Theme.Dark.Foreground),
+				"foreground_muted":     types.StringValue(page.Theme.Dark.ForegroundMuted),
+				"background_card":      types.StringValue(page.Theme.Dark.BackgroundCard),
+			}
+			darkObj, diags := types.ObjectValue(themeColorsAttrTypes, darkAttrs)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return statusPageModel{}
+			}
+			themeAttrs["dark"] = darkObj
+		}
+
+		// Map rounded and border width
+		if page.Theme.Rounded != nil {
+			themeAttrs["rounded"] = types.BoolValue(*page.Theme.Rounded)
+		}
+		if page.Theme.BorderWidth != nil {
+			themeAttrs["border_width"] = types.Int64Value(*page.Theme.BorderWidth)
+		}
+
+		themeObj, diags := types.ObjectValue(themeAttrTypes, themeAttrs)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return statusPageModel{}
 		}
-		model.Colors = colorsObj
+		model.Theme = themeObj
 	} else {
-		model.Colors = types.ObjectNull(map[string]attr.Type{
-			"operational":          types.StringType,
-			"degraded_performance": types.StringType,
-			"partial_outage":       types.StringType,
-			"major_outage":         types.StringType,
-			"maintenance":          types.StringType,
-			"empty":                types.StringType,
-		})
+		model.Theme = types.ObjectNull(themeAttrTypes)
 	}
 
 	// Map components
@@ -195,37 +257,117 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 			Computed:    true,
 			Description: "URL to redirect users from the status page",
 		},
+		"color_scheme": schema.StringAttribute{
+			Computed:    true,
+			Description: "Available color schemes for the status page (all, dark, or light)",
+		},
 		"timeframe": schema.Int64Attribute{
 			Computed:    true,
 			Description: "Number of days of status/incident history to display",
 		},
-		"colors": schema.SingleNestedAttribute{
+		"theme": schema.SingleNestedAttribute{
 			Computed:    true,
-			Description: "Colors to customize the status page appearance",
+			Description: "Theme settings to customize the status page",
 			Attributes: map[string]schema.Attribute{
-				"operational": schema.StringAttribute{
+				"rounded": schema.BoolAttribute{
 					Computed:    true,
-					Description: "Color for operational status",
+					Description: "Whether to use rounded corners",
 				},
-				"degraded_performance": schema.StringAttribute{
+				"border_width": schema.Int64Attribute{
 					Computed:    true,
-					Description: "Color for degraded performance status",
+					Description: "Border width (0-3)",
 				},
-				"partial_outage": schema.StringAttribute{
+				"light": schema.SingleNestedAttribute{
 					Computed:    true,
-					Description: "Color for partial outage status",
+					Description: "Light theme colors",
+					Attributes: map[string]schema.Attribute{
+						"operational": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for operational status",
+						},
+						"degraded_performance": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for degraded performance status",
+						},
+						"partial_outage": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for partial outage status",
+						},
+						"major_outage": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for major outage status",
+						},
+						"maintenance": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for maintenance status",
+						},
+						"empty": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for empty/no data status",
+						},
+						"background": schema.StringAttribute{
+							Computed:    true,
+							Description: "Background color",
+						},
+						"foreground": schema.StringAttribute{
+							Computed:    true,
+							Description: "Foreground/text color",
+						},
+						"foreground_muted": schema.StringAttribute{
+							Computed:    true,
+							Description: "Muted foreground/text color",
+						},
+						"background_card": schema.StringAttribute{
+							Computed:    true,
+							Description: "Card background color",
+						},
+					},
 				},
-				"major_outage": schema.StringAttribute{
+				"dark": schema.SingleNestedAttribute{
 					Computed:    true,
-					Description: "Color for major outage status",
-				},
-				"maintenance": schema.StringAttribute{
-					Computed:    true,
-					Description: "Color for maintenance status",
-				},
-				"empty": schema.StringAttribute{
-					Computed:    true,
-					Description: "Color for empty/no data status",
+					Description: "Dark theme colors",
+					Attributes: map[string]schema.Attribute{
+						"operational": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for operational status",
+						},
+						"degraded_performance": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for degraded performance status",
+						},
+						"partial_outage": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for partial outage status",
+						},
+						"major_outage": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for major outage status",
+						},
+						"maintenance": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for maintenance status",
+						},
+						"empty": schema.StringAttribute{
+							Computed:    true,
+							Description: "Color for empty/no data status",
+						},
+						"background": schema.StringAttribute{
+							Computed:    true,
+							Description: "Background color",
+						},
+						"foreground": schema.StringAttribute{
+							Computed:    true,
+							Description: "Foreground/text color",
+						},
+						"foreground_muted": schema.StringAttribute{
+							Computed:    true,
+							Description: "Muted foreground/text color",
+						},
+						"background_card": schema.StringAttribute{
+							Computed:    true,
+							Description: "Card background color",
+						},
+					},
 				},
 			},
 		},

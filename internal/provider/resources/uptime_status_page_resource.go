@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"regexp"
 	"strconv"
 
 	"terraform-provider-phare/internal/client"
@@ -11,22 +12,37 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
-// ColorsModel represents the color configuration for status pages
-type ColorsModel struct {
-	DegradedPerformance types.String `tfsdk:"degraded_performance"`
-	Empty               types.String `tfsdk:"empty"`
-	Maintenance         types.String `tfsdk:"maintenance"`
-	MajorOutage         types.String `tfsdk:"major_outage"`
+// ThemeColorsModel represents color values for a theme (light or dark)
+type ThemeColorsModel struct {
 	Operational         types.String `tfsdk:"operational"`
+	DegradedPerformance types.String `tfsdk:"degraded_performance"`
 	PartialOutage       types.String `tfsdk:"partial_outage"`
+	MajorOutage         types.String `tfsdk:"major_outage"`
+	Maintenance         types.String `tfsdk:"maintenance"`
+	Empty               types.String `tfsdk:"empty"`
+	Background          types.String `tfsdk:"background"`
+	Foreground          types.String `tfsdk:"foreground"`
+	ForegroundMuted     types.String `tfsdk:"foreground_muted"`
+	BackgroundCard      types.String `tfsdk:"background_card"`
+}
+
+// ThemeModel represents the theme configuration for status pages
+type ThemeModel struct {
+	Light       types.Object `tfsdk:"light"`
+	Dark        types.Object `tfsdk:"dark"`
+	Rounded     types.Bool   `tfsdk:"rounded"`
+	BorderWidth types.Int64  `tfsdk:"border_width"`
 }
 
 // ComponentModel represents a component in the status page
@@ -37,7 +53,7 @@ type ComponentModel struct {
 
 // UptimeStatusPageModel defines the data model for the status page resource
 type UptimeStatusPageModel struct {
-	Colors               ColorsModel   `tfsdk:"colors"`
+	ColorScheme          types.String  `tfsdk:"color_scheme"`
 	Components           types.List    `tfsdk:"components"`
 	CreatedAt            types.String  `tfsdk:"created_at"`
 	Description          types.String  `tfsdk:"description"`
@@ -48,6 +64,7 @@ type UptimeStatusPageModel struct {
 	SearchEngineIndexed  types.Bool    `tfsdk:"search_engine_indexed"`
 	Subdomain            types.String  `tfsdk:"subdomain"`
 	SubscriptionChannels types.List    `tfsdk:"subscription_channels"`
+	Theme                types.Object  `tfsdk:"theme"`
 	Timeframe            types.Int64   `tfsdk:"timeframe"`
 	Title                types.String  `tfsdk:"title"`
 	UpdatedAt            types.String  `tfsdk:"updated_at"`
@@ -59,42 +76,15 @@ type UptimeStatusPageModel struct {
 func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"colors": schema.SingleNestedAttribute{
-				Attributes: map[string]schema.Attribute{
-					"degraded_performance": schema.StringAttribute{
-						Required:            true,
-						Description:         "Color for degraded performance status (e.g., #fbbf24)",
-						MarkdownDescription: "Color for degraded performance status (e.g., #fbbf24)",
-					},
-					"empty": schema.StringAttribute{
-						Required:            true,
-						Description:         "Color for empty/no data status (e.g., #d3d3d3)",
-						MarkdownDescription: "Color for empty/no data status (e.g., #d3d3d3)",
-					},
-					"maintenance": schema.StringAttribute{
-						Required:            true,
-						Description:         "Color for maintenance status (e.g., #6366f1)",
-						MarkdownDescription: "Color for maintenance status (e.g., #6366f1)",
-					},
-					"major_outage": schema.StringAttribute{
-						Required:            true,
-						Description:         "Color for major outage status (e.g., #ef4444)",
-						MarkdownDescription: "Color for major outage status (e.g., #ef4444)",
-					},
-					"operational": schema.StringAttribute{
-						Required:            true,
-						Description:         "Color for operational status (e.g., #16a34a)",
-						MarkdownDescription: "Color for operational status (e.g., #16a34a)",
-					},
-					"partial_outage": schema.StringAttribute{
-						Required:            true,
-						Description:         "Color for partial outage status (e.g., #f59e0b)",
-						MarkdownDescription: "Color for partial outage status (e.g., #f59e0b)",
-					},
+			"color_scheme": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("all"),
+				Description:         "Available color schemes for the status page (all, dark, or light). Defaults to all.",
+				MarkdownDescription: "Available color schemes for the status page (all, dark, or light). Defaults to all.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("all", "dark", "light"),
 				},
-				Required:            true,
-				Description:         "Colors to customize the status page appearance",
-				MarkdownDescription: "Colors to customize the status page appearance",
 			},
 			"components": schema.ListNestedAttribute{
 				NestedObject: schema.NestedAttributeObject{
@@ -213,17 +203,286 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Optional: true,
 			},
 		},
+		Blocks: map[string]schema.Block{
+			"theme": schema.SingleNestedBlock{
+				Attributes: map[string]schema.Attribute{
+					"rounded": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Whether to use rounded corners",
+						MarkdownDescription: "Whether to use rounded corners",
+					},
+					"border_width": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Border width (0-3)",
+						MarkdownDescription: "Border width (0-3)",
+						Validators: []validator.Int64{
+							int64validator.Between(0, 3),
+						},
+					},
+				},
+				Blocks: map[string]schema.Block{
+					"light": schema.SingleNestedBlock{
+						Attributes: map[string]schema.Attribute{
+							"operational": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for operational status (e.g., #16a34a)",
+								MarkdownDescription: "Color for operational status (e.g., #16a34a)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #16a34a)",
+									),
+								},
+							},
+							"degraded_performance": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for degraded performance status (e.g., #fbbf24)",
+								MarkdownDescription: "Color for degraded performance status (e.g., #fbbf24)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #fbbf24)",
+									),
+								},
+							},
+							"partial_outage": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for partial outage status (e.g., #f59e0b)",
+								MarkdownDescription: "Color for partial outage status (e.g., #f59e0b)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #f59e0b)",
+									),
+								},
+							},
+							"major_outage": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for major outage status (e.g., #ef4444)",
+								MarkdownDescription: "Color for major outage status (e.g., #ef4444)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #ef4444)",
+									),
+								},
+							},
+							"maintenance": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for maintenance status (e.g., #6366f1)",
+								MarkdownDescription: "Color for maintenance status (e.g., #6366f1)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #6366f1)",
+									),
+								},
+							},
+							"empty": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for empty/no data status (e.g., #d3d3d3)",
+								MarkdownDescription: "Color for empty/no data status (e.g., #d3d3d3)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #d3d3d3)",
+									),
+								},
+							},
+							"background": schema.StringAttribute{
+								Required:            true,
+								Description:         "Background color (e.g., #ffffff)",
+								MarkdownDescription: "Background color (e.g., #ffffff)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #ffffff)",
+									),
+								},
+							},
+							"foreground": schema.StringAttribute{
+								Required:            true,
+								Description:         "Foreground/text color (e.g., #000000)",
+								MarkdownDescription: "Foreground/text color (e.g., #000000)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #000000)",
+									),
+								},
+							},
+							"foreground_muted": schema.StringAttribute{
+								Required:            true,
+								Description:         "Muted foreground/text color (e.g., #737373)",
+								MarkdownDescription: "Muted foreground/text color (e.g., #737373)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #737373)",
+									),
+								},
+							},
+							"background_card": schema.StringAttribute{
+								Required:            true,
+								Description:         "Card background color (e.g., #fafafa)",
+								MarkdownDescription: "Card background color (e.g., #fafafa)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #fafafa)",
+									),
+								},
+							},
+						},
+						Description:         "Light theme colors",
+						MarkdownDescription: "Light theme colors",
+					},
+					"dark": schema.SingleNestedBlock{
+						Attributes: map[string]schema.Attribute{
+							"operational": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for operational status (e.g., #16a34a)",
+								MarkdownDescription: "Color for operational status (e.g., #16a34a)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #16a34a)",
+									),
+								},
+							},
+							"degraded_performance": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for degraded performance status (e.g., #fbbf24)",
+								MarkdownDescription: "Color for degraded performance status (e.g., #fbbf24)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #fbbf24)",
+									),
+								},
+							},
+							"partial_outage": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for partial outage status (e.g., #f59e0b)",
+								MarkdownDescription: "Color for partial outage status (e.g., #f59e0b)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #f59e0b)",
+									),
+								},
+							},
+							"major_outage": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for major outage status (e.g., #ef4444)",
+								MarkdownDescription: "Color for major outage status (e.g., #ef4444)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #ef4444)",
+									),
+								},
+							},
+							"maintenance": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for maintenance status (e.g., #6366f1)",
+								MarkdownDescription: "Color for maintenance status (e.g., #6366f1)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #6366f1)",
+									),
+								},
+							},
+							"empty": schema.StringAttribute{
+								Required:            true,
+								Description:         "Color for empty/no data status (e.g., #d3d3d3)",
+								MarkdownDescription: "Color for empty/no data status (e.g., #d3d3d3)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #d3d3d3)",
+									),
+								},
+							},
+							"background": schema.StringAttribute{
+								Required:            true,
+								Description:         "Background color (e.g., #111111)",
+								MarkdownDescription: "Background color (e.g., #111111)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #111111)",
+									),
+								},
+							},
+							"foreground": schema.StringAttribute{
+								Required:            true,
+								Description:         "Foreground/text color (e.g., #ffffff)",
+								MarkdownDescription: "Foreground/text color (e.g., #ffffff)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #ffffff)",
+									),
+								},
+							},
+							"foreground_muted": schema.StringAttribute{
+								Required:            true,
+								Description:         "Muted foreground/text color (e.g., #959595)",
+								MarkdownDescription: "Muted foreground/text color (e.g., #959595)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #959595)",
+									),
+								},
+							},
+							"background_card": schema.StringAttribute{
+								Required:            true,
+								Description:         "Card background color (e.g., #1a1a1a)",
+								MarkdownDescription: "Card background color (e.g., #1a1a1a)",
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
+										"must be a valid hexadecimal color code (e.g., #1a1a1a)",
+									),
+								},
+							},
+						},
+						Description:         "Dark theme colors",
+						MarkdownDescription: "Dark theme colors",
+					},
+				},
+				Description:         "Theme settings to customize the status page",
+				MarkdownDescription: "Theme settings to customize the status page",
+			},
+		},
 	}
 }
 
-// ColorsModelAttrTypes defines the attribute types for ColorsModel
-var ColorsModelAttrTypes = map[string]attr.Type{
-	"degraded_performance": types.StringType,
-	"empty":                types.StringType,
-	"maintenance":          types.StringType,
-	"major_outage":         types.StringType,
+// ThemeColorsModelAttrTypes defines the attribute types for ThemeColorsModel
+var ThemeColorsModelAttrTypes = map[string]attr.Type{
 	"operational":          types.StringType,
+	"degraded_performance": types.StringType,
 	"partial_outage":       types.StringType,
+	"major_outage":         types.StringType,
+	"maintenance":          types.StringType,
+	"empty":                types.StringType,
+	"background":           types.StringType,
+	"foreground":           types.StringType,
+	"foreground_muted":     types.StringType,
+	"background_card":      types.StringType,
+}
+
+// ThemeModelAttrTypes defines the attribute types for ThemeModel
+var ThemeModelAttrTypes = map[string]attr.Type{
+	"light":        types.ObjectType{AttrTypes: ThemeColorsModelAttrTypes},
+	"dark":         types.ObjectType{AttrTypes: ThemeColorsModelAttrTypes},
+	"rounded":      types.BoolType,
+	"border_width": types.Int64Type,
 }
 
 // ComponentModelAttrTypes defines the attribute types for ComponentModel
@@ -298,28 +557,192 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_status_page", &resp.Diagnostics)
 }
 
-// Helper function to convert Terraform colors model to client colors config
-func colorsModelToClientConfig(colors ColorsModel) *client.StatusPageColors {
-	return &client.StatusPageColors{
+// Helper function to convert Terraform theme colors model to client theme colors
+func themeColorsModelToClient(colors ThemeColorsModel) *client.ThemeColors {
+	return &client.ThemeColors{
 		Operational:         colors.Operational.ValueString(),
 		DegradedPerformance: colors.DegradedPerformance.ValueString(),
 		PartialOutage:       colors.PartialOutage.ValueString(),
 		MajorOutage:         colors.MajorOutage.ValueString(),
 		Maintenance:         colors.Maintenance.ValueString(),
 		Empty:               colors.Empty.ValueString(),
+		Background:          colors.Background.ValueString(),
+		Foreground:          colors.Foreground.ValueString(),
+		ForegroundMuted:     colors.ForegroundMuted.ValueString(),
+		BackgroundCard:      colors.BackgroundCard.ValueString(),
 	}
 }
 
-// Helper function to convert client colors config to Terraform colors model
-func clientConfigToColorsModel(config *client.StatusPageColors) ColorsModel {
-	return ColorsModel{
-		Operational:         types.StringValue(config.Operational),
-		DegradedPerformance: types.StringValue(config.DegradedPerformance),
-		PartialOutage:       types.StringValue(config.PartialOutage),
-		MajorOutage:         types.StringValue(config.MajorOutage),
-		Maintenance:         types.StringValue(config.Maintenance),
-		Empty:               types.StringValue(config.Empty),
+// Helper function to convert client theme colors to Terraform theme colors model
+func clientToThemeColorsModel(colors *client.ThemeColors) ThemeColorsModel {
+	return ThemeColorsModel{
+		Operational:         types.StringValue(colors.Operational),
+		DegradedPerformance: types.StringValue(colors.DegradedPerformance),
+		PartialOutage:       types.StringValue(colors.PartialOutage),
+		MajorOutage:         types.StringValue(colors.MajorOutage),
+		Maintenance:         types.StringValue(colors.Maintenance),
+		Empty:               types.StringValue(colors.Empty),
+		Background:          types.StringValue(colors.Background),
+		Foreground:          types.StringValue(colors.Foreground),
+		ForegroundMuted:     types.StringValue(colors.ForegroundMuted),
+		BackgroundCard:      types.StringValue(colors.BackgroundCard),
 	}
+}
+
+// Helper function to map theme colors to attribute values
+func mapThemeColorsToAttrs(colors ThemeColorsModel) map[string]attr.Value {
+	return map[string]attr.Value{
+		"operational":          colors.Operational,
+		"degraded_performance": colors.DegradedPerformance,
+		"partial_outage":       colors.PartialOutage,
+		"major_outage":         colors.MajorOutage,
+		"maintenance":          colors.Maintenance,
+		"empty":                colors.Empty,
+		"background":           colors.Background,
+		"foreground":           colors.Foreground,
+		"foreground_muted":     colors.ForegroundMuted,
+		"background_card":      colors.BackgroundCard,
+	}
+}
+
+// Helper function to map theme from API response to Terraform state
+func mapThemeFromAPIResponse(ctx context.Context, apiTheme *client.StatusPageTheme, diagnostics *diag.Diagnostics) types.Object {
+	if apiTheme == nil {
+		return types.ObjectNull(ThemeModelAttrTypes)
+	}
+
+	themeAttrs := map[string]attr.Value{
+		"light":        types.ObjectNull(ThemeColorsModelAttrTypes),
+		"dark":         types.ObjectNull(ThemeColorsModelAttrTypes),
+		"rounded":      types.BoolNull(),
+		"border_width": types.Int64Null(),
+	}
+
+	// Map light theme colors
+	if apiTheme.Light != nil {
+		lightColors := clientToThemeColorsModel(apiTheme.Light)
+		lightObj, objDiags := types.ObjectValue(ThemeColorsModelAttrTypes, mapThemeColorsToAttrs(lightColors))
+		diagnostics.Append(objDiags...)
+		if diagnostics.HasError() {
+			return types.ObjectNull(ThemeModelAttrTypes)
+		}
+		themeAttrs["light"] = lightObj
+	}
+
+	// Map dark theme colors
+	if apiTheme.Dark != nil {
+		darkColors := clientToThemeColorsModel(apiTheme.Dark)
+		darkObj, objDiags := types.ObjectValue(ThemeColorsModelAttrTypes, mapThemeColorsToAttrs(darkColors))
+		diagnostics.Append(objDiags...)
+		if diagnostics.HasError() {
+			return types.ObjectNull(ThemeModelAttrTypes)
+		}
+		themeAttrs["dark"] = darkObj
+	}
+
+	// Map rounded and border width
+	if apiTheme.Rounded != nil {
+		themeAttrs["rounded"] = types.BoolValue(*apiTheme.Rounded)
+	}
+	if apiTheme.BorderWidth != nil {
+		themeAttrs["border_width"] = types.Int64Value(*apiTheme.BorderWidth)
+	}
+
+	themeObj, objDiags := types.ObjectValue(ThemeModelAttrTypes, themeAttrs)
+	diagnostics.Append(objDiags...)
+	return themeObj
+}
+
+// Helper function to extract theme from plan and convert to client format
+func extractThemeFromPlan(ctx context.Context, planTheme types.Object, diagnostics *diag.Diagnostics) *client.StatusPageTheme {
+	if planTheme.IsNull() || planTheme.IsUnknown() {
+		return nil
+	}
+
+	themeStruct := struct {
+		Light       types.Object `tfsdk:"light"`
+		Dark        types.Object `tfsdk:"dark"`
+		Rounded     types.Bool   `tfsdk:"rounded"`
+		BorderWidth types.Int64  `tfsdk:"border_width"`
+	}{}
+
+	diagsObj := planTheme.As(ctx, &themeStruct, basetypes.ObjectAsOptions{})
+	diagnostics.Append(diagsObj...)
+	if diagnostics.HasError() {
+		return nil
+	}
+
+	theme := &client.StatusPageTheme{}
+
+	// Extract light theme colors
+	if !themeStruct.Light.IsNull() && !themeStruct.Light.IsUnknown() {
+		var lightColors ThemeColorsModel
+		diagsObj := themeStruct.Light.As(ctx, &lightColors, basetypes.ObjectAsOptions{})
+		diagnostics.Append(diagsObj...)
+		if diagnostics.HasError() {
+			return nil
+		}
+		theme.Light = themeColorsModelToClient(lightColors)
+	}
+
+	// Extract dark theme colors
+	if !themeStruct.Dark.IsNull() && !themeStruct.Dark.IsUnknown() {
+		var darkColors ThemeColorsModel
+		diagsObj := themeStruct.Dark.As(ctx, &darkColors, basetypes.ObjectAsOptions{})
+		diagnostics.Append(diagsObj...)
+		if diagnostics.HasError() {
+			return nil
+		}
+		theme.Dark = themeColorsModelToClient(darkColors)
+	}
+
+	// Extract rounded and border width
+	if !themeStruct.Rounded.IsNull() {
+		rounded := themeStruct.Rounded.ValueBool()
+		theme.Rounded = &rounded
+	}
+	if !themeStruct.BorderWidth.IsNull() {
+		borderWidth := themeStruct.BorderWidth.ValueInt64()
+		theme.BorderWidth = &borderWidth
+	}
+
+	return theme
+}
+
+// Helper function to map components from API response
+func mapComponentsFromAPIResponse(ctx context.Context, apiComponents []client.StatusPageComponent, diagnostics *diag.Diagnostics) types.List {
+	if len(apiComponents) == 0 {
+		return types.ListNull(types.ObjectType{AttrTypes: ComponentModelAttrTypes})
+	}
+
+	componentModels := make([]ComponentModel, len(apiComponents))
+	for i, comp := range apiComponents {
+		componentModels[i] = ComponentModel{
+			ComponentableType: types.StringValue(comp.ComponentableType),
+			ComponentableID:   types.Int64Value(comp.ComponentableID),
+		}
+	}
+
+	componentType := types.ObjectType{AttrTypes: ComponentModelAttrTypes}
+	componentsList, diagsObj := types.ListValueFrom(ctx, componentType, componentModels)
+	diagnostics.Append(diagsObj...)
+	return componentsList
+}
+
+// Helper function to map subscription channels from API response
+func mapSubscriptionChannelsFromAPIResponse(apiChannels []string, diagnostics *diag.Diagnostics) types.List {
+	if len(apiChannels) == 0 {
+		return types.ListNull(types.StringType)
+	}
+
+	channelsElements := make([]attr.Value, len(apiChannels))
+	for i, channel := range apiChannels {
+		channelsElements[i] = types.StringValue(channel)
+	}
+
+	channelsList, diagsObj := types.ListValue(types.StringType, channelsElements)
+	diagnostics.Append(diagsObj...)
+	return channelsList
 }
 
 func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -355,8 +778,11 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 		}
 	}
 
-	// Convert colors from plan
-	colors := colorsModelToClientConfig(plan.Colors)
+	// Extract and convert theme from plan
+	theme := extractThemeFromPlan(ctx, plan.Theme, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Convert subscription_channels List to []string
 	var subscriptionChannels []string
@@ -369,6 +795,7 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 
 	// Build API request from plan
 	subdomain := plan.Subdomain.ValueString()
+	colorScheme := plan.ColorScheme.ValueString()
 	apiReq := &client.StatusPageRequest{
 		Name:                 plan.Name.ValueString(),
 		Subdomain:            &subdomain,
@@ -376,7 +803,8 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 		Description:          plan.Description.ValueString(),
 		SearchEngineIndexed:  plan.SearchEngineIndexed.ValueBool(),
 		WebsiteURL:           plan.WebsiteUrl.ValueString(),
-		Colors:               colors,
+		ColorScheme:          &colorScheme,
+		Theme:                theme,
 		Components:           components,
 		SubscriptionChannels: subscriptionChannels,
 	}
@@ -426,49 +854,25 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 		plan.Timeframe = types.Int64Value(*apiResp.Timeframe)
 	}
 
-	// Map colors from API response
-	if apiResp.Colors != nil {
-		plan.Colors = clientConfigToColorsModel(apiResp.Colors)
+	// Map color_scheme from API response
+	if apiResp.ColorScheme != nil {
+		plan.ColorScheme = types.StringValue(*apiResp.ColorScheme)
 	}
 
-	// Map components from API response
-	if len(apiResp.Components) > 0 {
-		componentModels := make([]ComponentModel, len(apiResp.Components))
-		for i, comp := range apiResp.Components {
-			componentModels[i] = ComponentModel{
-				ComponentableType: types.StringValue(comp.ComponentableType),
-				ComponentableID:   types.Int64Value(comp.ComponentableID),
-			}
-		}
-
-		componentType := types.ObjectType{
-			AttrTypes: ComponentModelAttrTypes,
-		}
-
-		componentsList, diags := types.ListValueFrom(ctx, componentType, componentModels)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		plan.Components = componentsList
-	} else {
-		plan.Components = types.ListNull(types.ObjectType{AttrTypes: ComponentModelAttrTypes})
+	// Map theme, components, and subscription channels from API response using helper functions
+	plan.Theme = mapThemeFromAPIResponse(ctx, apiResp.Theme, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	// Map subscription_channels from API response
-	if len(apiResp.SubscriptionChannels) > 0 {
-		channelsElements := make([]attr.Value, len(apiResp.SubscriptionChannels))
-		for i, channel := range apiResp.SubscriptionChannels {
-			channelsElements[i] = types.StringValue(channel)
-		}
-		channelsList, diags := types.ListValue(types.StringType, channelsElements)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		plan.SubscriptionChannels = channelsList
-	} else {
-		plan.SubscriptionChannels = types.ListNull(types.StringType)
+	plan.Components = mapComponentsFromAPIResponse(ctx, apiResp.Components, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	plan.SubscriptionChannels = mapSubscriptionChannelsFromAPIResponse(apiResp.SubscriptionChannels, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Save data into Terraform state
@@ -528,49 +932,25 @@ func (r *uptimeStatusPageResource) Read(ctx context.Context, req resource.ReadRe
 		state.Timeframe = types.Int64Value(*apiResp.Timeframe)
 	}
 
-	// Map colors from API response
-	if apiResp.Colors != nil {
-		state.Colors = clientConfigToColorsModel(apiResp.Colors)
+	// Map color_scheme from API response
+	if apiResp.ColorScheme != nil {
+		state.ColorScheme = types.StringValue(*apiResp.ColorScheme)
 	}
 
-	// Map components from API response
-	if len(apiResp.Components) > 0 {
-		componentModels := make([]ComponentModel, len(apiResp.Components))
-		for i, comp := range apiResp.Components {
-			componentModels[i] = ComponentModel{
-				ComponentableType: types.StringValue(comp.ComponentableType),
-				ComponentableID:   types.Int64Value(comp.ComponentableID),
-			}
-		}
-
-		componentType := types.ObjectType{
-			AttrTypes: ComponentModelAttrTypes,
-		}
-
-		componentsList, diags := types.ListValueFrom(ctx, componentType, componentModels)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		state.Components = componentsList
-	} else {
-		state.Components = types.ListNull(types.ObjectType{AttrTypes: ComponentModelAttrTypes})
+	// Map theme, components, and subscription channels from API response using helper functions
+	state.Theme = mapThemeFromAPIResponse(ctx, apiResp.Theme, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	// Map subscription_channels from API response
-	if len(apiResp.SubscriptionChannels) > 0 {
-		channelsElements := make([]attr.Value, len(apiResp.SubscriptionChannels))
-		for i, channel := range apiResp.SubscriptionChannels {
-			channelsElements[i] = types.StringValue(channel)
-		}
-		channelsList, diags := types.ListValue(types.StringType, channelsElements)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		state.SubscriptionChannels = channelsList
-	} else {
-		state.SubscriptionChannels = types.ListNull(types.StringType)
+	state.Components = mapComponentsFromAPIResponse(ctx, apiResp.Components, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	state.SubscriptionChannels = mapSubscriptionChannelsFromAPIResponse(apiResp.SubscriptionChannels, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Save updated data into Terraform state
@@ -617,8 +997,11 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 		}
 	}
 
-	// Convert colors from plan
-	colors := colorsModelToClientConfig(plan.Colors)
+	// Extract and convert theme from plan
+	theme := extractThemeFromPlan(ctx, plan.Theme, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Convert subscription_channels List to []string
 	var subscriptionChannels []string
@@ -631,6 +1014,7 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 
 	// Build API request
 	subdomain := plan.Subdomain.ValueString()
+	colorScheme := plan.ColorScheme.ValueString()
 	apiReq := &client.StatusPageRequest{
 		Name:                 plan.Name.ValueString(),
 		Subdomain:            &subdomain,
@@ -638,7 +1022,8 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 		Description:          plan.Description.ValueString(),
 		SearchEngineIndexed:  plan.SearchEngineIndexed.ValueBool(),
 		WebsiteURL:           plan.WebsiteUrl.ValueString(),
-		Colors:               colors,
+		ColorScheme:          &colorScheme,
+		Theme:                theme,
 		Components:           components,
 		SubscriptionChannels: subscriptionChannels,
 	}
@@ -687,49 +1072,25 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 		plan.Timeframe = types.Int64Value(*apiResp.Timeframe)
 	}
 
-	// Map colors from API response
-	if apiResp.Colors != nil {
-		plan.Colors = clientConfigToColorsModel(apiResp.Colors)
+	// Map color_scheme from API response
+	if apiResp.ColorScheme != nil {
+		plan.ColorScheme = types.StringValue(*apiResp.ColorScheme)
 	}
 
-	// Map components from API response
-	if len(apiResp.Components) > 0 {
-		componentModels := make([]ComponentModel, len(apiResp.Components))
-		for i, comp := range apiResp.Components {
-			componentModels[i] = ComponentModel{
-				ComponentableType: types.StringValue(comp.ComponentableType),
-				ComponentableID:   types.Int64Value(comp.ComponentableID),
-			}
-		}
-
-		componentType := types.ObjectType{
-			AttrTypes: ComponentModelAttrTypes,
-		}
-
-		componentsList, diags := types.ListValueFrom(ctx, componentType, componentModels)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		plan.Components = componentsList
-	} else {
-		plan.Components = types.ListNull(types.ObjectType{AttrTypes: ComponentModelAttrTypes})
+	// Map theme, components, and subscription channels from API response using helper functions
+	plan.Theme = mapThemeFromAPIResponse(ctx, apiResp.Theme, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	// Map subscription_channels from API response
-	if len(apiResp.SubscriptionChannels) > 0 {
-		channelsElements := make([]attr.Value, len(apiResp.SubscriptionChannels))
-		for i, channel := range apiResp.SubscriptionChannels {
-			channelsElements[i] = types.StringValue(channel)
-		}
-		channelsList, diags := types.ListValue(types.StringType, channelsElements)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		plan.SubscriptionChannels = channelsList
-	} else {
-		plan.SubscriptionChannels = types.ListNull(types.StringType)
+	plan.Components = mapComponentsFromAPIResponse(ctx, apiResp.Components, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	plan.SubscriptionChannels = mapSubscriptionChannelsFromAPIResponse(apiResp.SubscriptionChannels, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Save updated data into Terraform state
