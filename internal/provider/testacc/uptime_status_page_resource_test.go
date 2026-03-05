@@ -59,6 +59,7 @@ resource "phare_uptime_status_page" "test" {
   search_engine_indexed = false
   subdomain             = "invariance"
   timeframe             = 30
+  color_scheme          = "all"
 
   theme {
     rounded      = true
@@ -163,6 +164,7 @@ resource "phare_uptime_status_page" "test" {
   search_engine_indexed = true
   subdomain             = "invariance"
   timeframe             = 60
+  color_scheme          = "all"
 
   theme {
     rounded      = true
