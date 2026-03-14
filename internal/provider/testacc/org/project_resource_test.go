@@ -1,10 +1,12 @@
-package testacc
+package testacc_org
 
 import (
 	"os"
 	"testing"
 
 	testingresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	"terraform-provider-phare/internal/provider/testacc"
 )
 
 // TestAccProjectResource creates a basic project and verifies CRUD operations
@@ -14,10 +16,10 @@ func TestAccProjectResource(t *testing.T) {
 		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
 	}
 
-	TestAccPreCheck(t)
+	testacc.TestAccOrgPreCheck(t)
 
 	testingresource.Test(t, testingresource.TestCase{
-		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
+		ProtoV6ProviderFactories: testacc.TestAccProtoV6ProviderFactories,
 		Steps: []testingresource.TestStep{
 			{
 				Config: `

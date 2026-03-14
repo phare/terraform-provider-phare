@@ -1,38 +1,34 @@
-package testacc
+package testacc_project
 
 import (
 	"os"
 	"testing"
 
+	"terraform-provider-phare/internal/provider/testacc"
+
 	testingresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// TestAccAlertRuleResource creates a basic alert rule and verifies CRUD operations
+// TestAccAlertRuleResource creates a basic alert rule and verifies CRUD operations with project-scoped API key
 func TestAccAlertRuleResource(t *testing.T) {
 	// Skip acceptance tests if TF_ACC environment variable is not set
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
 	}
 
-	TestAccPreCheck(t)
+	testacc.TestAccProjectPreCheck(t)
 
 	testingresource.Test(t, testingresource.TestCase{
-		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
+		ProtoV6ProviderFactories: testacc.TestAccProtoV6ProviderFactories,
 		Steps: []testingresource.TestStep{
 			{
 				Config: `
-data "phare_project" "test" {
-  slug = "test"
-}
-
 data "phare_integration" "email" {
   app  = "email"
   name = "Default"
 }
 
 resource "phare_alert_rule" "test" {
-  project_scope = data.phare_project.test.slug
-
   event          = "uptime.incident.created"
   scope          = "organization"
   integration_id = data.phare_integration.email.id
@@ -55,18 +51,12 @@ resource "phare_alert_rule" "test" {
 			},
 			{
 				Config: `
-data "phare_project" "test" {
-  slug = "test"
-}
-
 data "phare_integration" "email" {
   app  = "email"
   name = "Default"
 }
 
 resource "phare_alert_rule" "test" {
-  project_scope = data.phare_project.test.slug
-
   event          = "uptime.incident.created"
   scope          = "organization"
   integration_id = data.phare_integration.email.id

@@ -1,33 +1,29 @@
-package testacc
+package testacc_project
 
 import (
 	"os"
 	"testing"
 
 	testingresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	"terraform-provider-phare/internal/provider/testacc"
 )
 
-// TestAccUptimeMonitorHttpResource creates a basic HTTP uptime monitor and verifies CRUD operations
+// TestAccUptimeMonitorHttpResource creates a basic HTTP uptime monitor and verifies CRUD operations with project-scoped API key
 func TestAccUptimeMonitorHttpResource(t *testing.T) {
 	// Skip acceptance tests if TF_ACC environment variable is not set
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
 	}
 
-	TestAccPreCheck(t)
+	testacc.TestAccProjectPreCheck(t)
 
 	testingresource.Test(t, testingresource.TestCase{
-		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
+		ProtoV6ProviderFactories: testacc.TestAccProtoV6ProviderFactories,
 		Steps: []testingresource.TestStep{
 			{
 				Config: `
-data "phare_project" "test" {
-	slug = "test"
-}
-
 resource "phare_uptime_monitor_http" "test" {
-	project_scope = data.phare_project.test.slug
-
 	name     = "HTTP Website"
 	interval = 30
 	timeout  = 15000
@@ -70,13 +66,7 @@ resource "phare_uptime_monitor_http" "test" {
 			},
 			{
 				Config: `
-data "phare_project" "test" {
-	slug = "test"
-}
-
 resource "phare_uptime_monitor_http" "test" {
-	project_scope = data.phare_project.test.slug
-
 	name     = "HTTP Website Updated"
 	interval = 60
 	timeout  = 15000

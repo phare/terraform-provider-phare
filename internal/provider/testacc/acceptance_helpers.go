@@ -18,9 +18,22 @@ var TestAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 	"phare": providerserver.NewProtocol6WithError(provider.New("test")()),
 }
 
-// TestAccPreCheck validates that the necessary environment variables are set
-func TestAccPreCheck(t *testing.T) {
-	if v := os.Getenv("PHARE_API_KEY"); v == "" {
-		t.Fatal("PHARE_API_KEY must be set for acceptance tests")
+// TestAccOrgPreCheck validates that the organization-scoped API key is set
+// and copies it to PHARE_API_KEY for the provider to use
+func TestAccOrgPreCheck(t *testing.T) {
+	if v := os.Getenv("PHARE_ORG_API_KEY"); v == "" {
+		t.Fatal("PHARE_ORG_API_KEY must be set for organization-scoped acceptance tests")
+	} else {
+		os.Setenv("PHARE_API_KEY", v)
+	}
+}
+
+// TestAccProjectPreCheck validates that the project-scoped API key is set
+// and copies it to PHARE_API_KEY for the provider to use
+func TestAccProjectPreCheck(t *testing.T) {
+	if v := os.Getenv("PHARE_PRJ_API_KEY"); v == "" {
+		t.Fatal("PHARE_PRJ_API_KEY must be set for project-scoped acceptance tests")
+	} else {
+		os.Setenv("PHARE_API_KEY", v)
 	}
 }

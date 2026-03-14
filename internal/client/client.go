@@ -57,6 +57,7 @@ type Client struct {
 	projectSlug      string
 	providerVersion  string
 	terraformVersion string
+	isProjectScoped  bool
 }
 
 // NewClient creates a new Phare API client.
@@ -69,9 +70,10 @@ type Client struct {
 //   - projectSlug: Optional project slug for scoping requests (organization-scoped keys)
 //   - providerVersion: The version of the Terraform provider
 //   - terraformVersion: The version of Terraform (if available)
+//   - isProjectScoped: Whether the API key is project-scoped (starts with "pha_" but not "pha_org_")
 //
 // Returns an error if the configuration is invalid.
-func NewClient(baseURL, token string, timeout time.Duration, projectID, projectSlug, providerVersion, terraformVersion string) (*Client, error) {
+func NewClient(baseURL, token string, timeout time.Duration, projectID, projectSlug, providerVersion, terraformVersion string, isProjectScoped bool) (*Client, error) {
 	if baseURL == "" {
 		return nil, fmt.Errorf("baseURL cannot be empty")
 	}
@@ -99,6 +101,7 @@ func NewClient(baseURL, token string, timeout time.Duration, projectID, projectS
 		projectSlug:      projectSlug,
 		providerVersion:  providerVersion,
 		terraformVersion: terraformVersion,
+		isProjectScoped:  isProjectScoped,
 	}, nil
 }
 
@@ -302,6 +305,11 @@ func (c *Client) GetProjectScope() (string, string) {
 	return c.projectID, c.projectSlug
 }
 
+// IsProjectScoped returns true if the client is using a project-scoped API key.
+func (c *Client) IsProjectScoped() bool {
+	return c.isProjectScoped
+}
+
 // GetVersions returns the client's version information.
 func (c *Client) GetVersions() (string, string) {
 	return c.providerVersion, c.terraformVersion
@@ -324,5 +332,6 @@ func (c *Client) WithProjectScope(projectID, projectSlug string) (*Client, error
 		projectSlug,
 		c.providerVersion,
 		c.terraformVersion,
+		c.isProjectScoped,
 	)
 }

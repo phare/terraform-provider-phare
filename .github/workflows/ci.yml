@@ -50,5 +50,6 @@ jobs:
       - name: Run acceptance tests
         env:
           TF_ACC: "1"
-          PHARE_API_KEY: ${{ secrets.PHARE_API_KEY }}
+          PHARE_ORG_API_KEY: ${{ secrets.PHARE_ORG_API_KEY }}
+          PHARE_PRJ_API_KEY: ${{ secrets.PHARE_PRJ_API_KEY }}
         run: go test -v -race ./...
