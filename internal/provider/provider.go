@@ -150,12 +150,13 @@ func (p *phareProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		return
 	}
 
-	// Determine API key type for logging (don't log actual key)
+	isProjectScoped := false
 	apiKeyType := "unknown"
 	if strings.HasPrefix(apiKey, "pha_org_") {
 		apiKeyType = "organization-scoped"
 	} else if strings.HasPrefix(apiKey, "pha_") {
 		apiKeyType = "project-scoped"
+		isProjectScoped = true
 	}
 
 	// Log provider configuration (sanitized)
@@ -170,7 +171,7 @@ func (p *phareProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	})
 
 	// Create API client
-	apiClient, err := client.NewClient(baseURL, apiKey, timeout, projectID, projectSlug, p.version, p.terraformVersion)
+	apiClient, err := client.NewClient(baseURL, apiKey, timeout, projectID, projectSlug, p.version, p.terraformVersion, isProjectScoped)
 	if err != nil {
 		tflog.Error(ctx, "Failed to create Phare API client", map[string]interface{}{
 			"error": err.Error(),

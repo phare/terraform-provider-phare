@@ -62,6 +62,10 @@ func ValidateProjectScopeAtPlanTime(
 	resourceType string,
 	diagnostics *diag.Diagnostics,
 ) {
+	if client.IsProjectScoped() {
+		return
+	}
+
 	// If projectScope is null or unknown, we need to check if the client has a project scope
 	if projectScope.IsNull() || projectScope.IsUnknown() {
 		// Check if the client has a project scope configured
@@ -74,10 +78,6 @@ func ValidateProjectScopeAtPlanTime(
 		}
 		return
 	}
-
-	// For now, just check that projectScope is not null/unknown
-	// The actual validation of the scope value will happen when we try to use it
-	// This is a simplified approach to get things working
 }
 
 // ConfigureResourceWithProjectScope returns a client configured with the appropriate project scope
