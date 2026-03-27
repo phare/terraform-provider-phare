@@ -2,12 +2,20 @@ package testacc_org
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	testingresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
 	"terraform-provider-phare/internal/provider/testacc"
 )
+
+// getTestDataDir returns the absolute path to the testdata directory
+func getTestDataDir() string {
+	_, currentFile, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(currentFile), "..", "testdata")
+}
 
 // TestAccUptimeStatusPageResource creates a basic uptime status page and verifies CRUD operations
 func TestAccUptimeStatusPageResource(t *testing.T) {
@@ -213,6 +221,245 @@ resource "phare_uptime_status_page" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "description", "This is an updated status page description."),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "search_engine_indexed", "true"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "timeframe", "60"),
+				),
+			},
+		},
+	})
+}
+
+// statusPageThemeBlock is a reusable theme configuration for file upload tests
+const statusPageThemeBlock = `
+  theme {
+    rounded      = true
+    border_width = 2
+
+    light {
+      operational          = "#16a34a"
+      degraded_performance = "#fbbf24"
+      partial_outage       = "#f59e0b"
+      major_outage         = "#ef4444"
+      maintenance          = "#6366f1"
+      empty                = "#d3d3d3"
+      background           = "#ffffff"
+      foreground           = "#000000"
+      foreground_muted     = "#737373"
+      background_card      = "#fafafa"
+    }
+
+    dark {
+      operational          = "#16a34a"
+      degraded_performance = "#fbbf24"
+      partial_outage       = "#f59e0b"
+      major_outage         = "#ef4444"
+      maintenance          = "#6366f1"
+      empty                = "#d3d3d3"
+      background           = "#111111"
+      foreground           = "#ffffff"
+      foreground_muted     = "#959595"
+      background_card      = "#1a1a1a"
+    }
+  }
+`
+
+// TestAccUptimeStatusPageResourceWithFiles tests status page creation with logo and favicon file uploads
+func TestAccUptimeStatusPageResourceWithFiles(t *testing.T) {
+	// Skip acceptance tests if TF_ACC environment variable is not set
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
+	}
+
+	testacc.TestAccOrgPreCheck(t)
+
+	testDataDir := getTestDataDir()
+
+	testingresource.Test(t, testingresource.TestCase{
+		ProtoV6ProviderFactories: testacc.TestAccProtoV6ProviderFactories,
+		Steps: []testingresource.TestStep{
+			// Step 1: Create status page with logo files
+			{
+				Config: `
+data "phare_project" "test" {
+	slug = "test"
+}
+
+resource "phare_uptime_monitor_http" "test_files" {
+	project_scope = data.phare_project.test.slug
+
+	name     = "Website for files test"
+	interval = 30
+	timeout  = 15000
+	regions  = ["eu-fra-cdg"]
+
+	incident_confirmations = 3
+	recovery_confirmations = 2
+
+	request {
+		method = "HEAD"
+		url    = "https://invariance.dev"
+	}
+
+	success_assertions {
+		status_code {
+			operator = "in"
+			value    = "2xx"
+		}
+	}
+}
+
+resource "phare_uptime_status_page" "test_files" {
+  project_scope = data.phare_project.test.slug
+
+  name                  = "Status page with files"
+  title                 = "Status page with logo"
+  description           = "Testing file uploads"
+  website_url           = "https://invariance.dev"
+  search_engine_indexed = false
+  subdomain             = "invariance-files"
+  timeframe             = 30
+  color_scheme          = "all"
+
+  logo_light = "` + filepath.Join(testDataDir, "logo_light.png") + `"
+  logo_dark  = "` + filepath.Join(testDataDir, "logo_dark.png") + `"
+
+  components = [
+    {
+      componentable_type = "uptime/monitor"
+      componentable_id   = phare_uptime_monitor_http.test_files.id
+    }
+  ]
+` + statusPageThemeBlock + `
+}
+`,
+				Check: testingresource.ComposeAggregateTestCheckFunc(
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "name", "Status page with files"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "logo_light", filepath.Join(testDataDir, "logo_light.png")),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "logo_dark", filepath.Join(testDataDir, "logo_dark.png")),
+					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test_files", "id"),
+				),
+			},
+			// Step 2: Add favicon files
+			{
+				Config: `
+data "phare_project" "test" {
+	slug = "test"
+}
+
+resource "phare_uptime_monitor_http" "test_files" {
+	project_scope = data.phare_project.test.slug
+
+	name     = "Website for files test"
+	interval = 30
+	timeout  = 15000
+	regions  = ["eu-fra-cdg"]
+
+	incident_confirmations = 3
+	recovery_confirmations = 2
+
+	request {
+		method = "HEAD"
+		url    = "https://invariance.dev"
+	}
+
+	success_assertions {
+		status_code {
+			operator = "in"
+			value    = "2xx"
+		}
+	}
+}
+
+resource "phare_uptime_status_page" "test_files" {
+  project_scope = data.phare_project.test.slug
+
+  name                  = "Status page with files"
+  title                 = "Status page with logo and favicon"
+  description           = "Testing file uploads"
+  website_url           = "https://invariance.dev"
+  search_engine_indexed = false
+  subdomain             = "invariance-files"
+  timeframe             = 30
+  color_scheme          = "all"
+
+  logo_light    = "` + filepath.Join(testDataDir, "logo_light.png") + `"
+  logo_dark     = "` + filepath.Join(testDataDir, "logo_dark.png") + `"
+  favicon_light = "` + filepath.Join(testDataDir, "favicon_light.png") + `"
+  favicon_dark  = "` + filepath.Join(testDataDir, "favicon.svg") + `"
+
+  components = [
+    {
+      componentable_type = "uptime/monitor"
+      componentable_id   = phare_uptime_monitor_http.test_files.id
+    }
+  ]
+` + statusPageThemeBlock + `
+}
+`,
+				Check: testingresource.ComposeAggregateTestCheckFunc(
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "title", "Status page with logo and favicon"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_light", filepath.Join(testDataDir, "favicon_light.png")),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_dark", filepath.Join(testDataDir, "favicon.svg")),
+				),
+			},
+			// Step 3: Remove logos (keep favicons)
+			{
+				Config: `
+data "phare_project" "test" {
+	slug = "test"
+}
+
+resource "phare_uptime_monitor_http" "test_files" {
+	project_scope = data.phare_project.test.slug
+
+	name     = "Website for files test"
+	interval = 30
+	timeout  = 15000
+	regions  = ["eu-fra-cdg"]
+
+	incident_confirmations = 3
+	recovery_confirmations = 2
+
+	request {
+		method = "HEAD"
+		url    = "https://invariance.dev"
+	}
+
+	success_assertions {
+		status_code {
+			operator = "in"
+			value    = "2xx"
+		}
+	}
+}
+
+resource "phare_uptime_status_page" "test_files" {
+  project_scope = data.phare_project.test.slug
+
+  name                  = "Status page with files"
+  title                 = "Status page with favicon only"
+  description           = "Testing file uploads"
+  website_url           = "https://invariance.dev"
+  search_engine_indexed = false
+  subdomain             = "invariance-files"
+  timeframe             = 30
+  color_scheme          = "all"
+
+  favicon_light = "` + filepath.Join(testDataDir, "favicon_light.png") + `"
+  favicon_dark  = "` + filepath.Join(testDataDir, "favicon.svg") + `"
+
+  components = [
+    {
+      componentable_type = "uptime/monitor"
+      componentable_id   = phare_uptime_monitor_http.test_files.id
+    }
+  ]
+` + statusPageThemeBlock + `
+}
+`,
+				Check: testingresource.ComposeAggregateTestCheckFunc(
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "title", "Status page with favicon only"),
+					testingresource.TestCheckNoResourceAttr("phare_uptime_status_page.test_files", "logo_light"),
+					testingresource.TestCheckNoResourceAttr("phare_uptime_status_page.test_files", "logo_dark"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_light", filepath.Join(testDataDir, "favicon_light.png")),
 				),
 			},
 		},

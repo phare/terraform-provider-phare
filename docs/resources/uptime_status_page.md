@@ -26,6 +26,10 @@ resource "phare_uptime_status_page" "main" {
   subdomain             = "example" # example.status.phare.io
   domain                = "status.example.com"
   timeframe             = 30
+  logo_light            = "${path.module}/assets/logo-light.png"
+  logo_dark             = "${path.module}/assets/logo-dark.png"
+  favicon_light         = "${path.module}/assets/favicon.png"
+  favicon_dark          = "${path.module}/assets/favicon.png"
   color_scheme          = "all"
 
   theme {
@@ -73,6 +77,7 @@ resource "phare_uptime_status_page" "main" {
 
 ### Required
 
+- `components` (Attributes List) List of components (monitors) to show on the status page (see [below for nested schema](#nestedatt--components))
 - `description` (String) Status page description
 - `name` (String) Status page name
 - `search_engine_indexed` (Boolean) Whether search engines can index the page
@@ -84,8 +89,11 @@ resource "phare_uptime_status_page" "main" {
 ### Optional
 
 - `color_scheme` (String) Available color schemes for the status page (all, dark, or light). Defaults to all.
-- `components` (Attributes List) List of components (monitors) to show on the status page (see [below for nested schema](#nestedatt--components))
 - `domain` (String) Custom domain for the status page, [see docs](https://docs.phare.io/uptime/status-pages#custom-domain)
+- `favicon_dark` (String) Path to dark theme favicon file (png/svg). Remove attribute to delete favicon.
+- `favicon_light` (String) Path to light theme favicon file (png/svg). Remove attribute to delete favicon.
+- `logo_dark` (String) Path to dark theme logo image file (jpeg/png/svg). Remove attribute to delete logo.
+- `logo_light` (String) Path to light theme logo image file (jpeg/png/svg). Remove attribute to delete logo.
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
 - `subscription_channels` (List of String) Subscription channels available (rss, atom)
 - `theme` (Block, Optional) Theme settings to customize the status page (see [below for nested schema](#nestedblock--theme))
