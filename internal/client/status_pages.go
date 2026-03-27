@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
 )
 
 // StatusPageRequest represents the request body for creating/updating a status page.
@@ -135,4 +136,114 @@ func (c *Client) ListStatusPages(ctx context.Context, page, perPage int) ([]*Sta
 	}
 
 	return result, nil
+}
+
+// StatusPageFileUpload represents a file to upload to a status page.
+type StatusPageFileUpload struct {
+	FieldName string    // One of: logo_light, logo_dark, favicon_light, favicon_dark
+	FileName  string    // Original filename for Content-Disposition
+	Content   io.Reader // File content
+}
+
+// UpdateStatusPageWithFiles updates a status page with file uploads/removals.
+// The API requires all status page fields to be sent along with file operations.
+// For uploads, provide StatusPageFileUpload entries with Content.
+// For removals, provide field names in the removals slice (sends "false" to API).
+func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *StatusPageRequest, uploads []StatusPageFileUpload, removals []string) (*StatusPageResponse, error) {
+	path := fmt.Sprintf("/uptime/status-pages/%d", id)
+
+	// Build fields map with all status page data
+	fields := make(map[string]string)
+
+	// Add required fields
+	fields["name"] = req.Name
+	fields["title"] = req.Title
+	fields["description"] = req.Description
+	fields["website_url"] = req.WebsiteURL
+	if req.SearchEngineIndexed {
+		fields["search_engine_indexed"] = "1"
+	} else {
+		fields["search_engine_indexed"] = "0"
+	}
+
+	// Add optional fields
+	if req.Subdomain != nil {
+		fields["subdomain"] = *req.Subdomain
+	}
+	if req.Domain != nil {
+		fields["domain"] = *req.Domain
+	}
+	if req.ColorScheme != nil {
+		fields["color_scheme"] = *req.ColorScheme
+	}
+	if req.Timeframe != nil {
+		fields["timeframe"] = fmt.Sprintf("%d", *req.Timeframe)
+	}
+
+	// Add components as indexed fields
+	for i, comp := range req.Components {
+		fields[fmt.Sprintf("components[%d][componentable_type]", i)] = comp.ComponentableType
+		fields[fmt.Sprintf("components[%d][componentable_id]", i)] = fmt.Sprintf("%d", comp.ComponentableID)
+	}
+
+	// Add subscription channels
+	for i, channel := range req.SubscriptionChannels {
+		fields[fmt.Sprintf("subscription_channels[%d]", i)] = channel
+	}
+
+	// Add theme fields if present
+	if req.Theme != nil {
+		if req.Theme.Rounded != nil {
+			if *req.Theme.Rounded {
+				fields["theme[rounded]"] = "1"
+			} else {
+				fields["theme[rounded]"] = "0"
+			}
+		}
+		if req.Theme.BorderWidth != nil {
+			fields["theme[border_width]"] = fmt.Sprintf("%d", *req.Theme.BorderWidth)
+		}
+		if req.Theme.Light != nil {
+			fields["theme[light][operational]"] = req.Theme.Light.Operational
+			fields["theme[light][degraded_performance]"] = req.Theme.Light.DegradedPerformance
+			fields["theme[light][partial_outage]"] = req.Theme.Light.PartialOutage
+			fields["theme[light][major_outage]"] = req.Theme.Light.MajorOutage
+			fields["theme[light][maintenance]"] = req.Theme.Light.Maintenance
+			fields["theme[light][empty]"] = req.Theme.Light.Empty
+			fields["theme[light][background]"] = req.Theme.Light.Background
+			fields["theme[light][foreground]"] = req.Theme.Light.Foreground
+			fields["theme[light][foreground_muted]"] = req.Theme.Light.ForegroundMuted
+			fields["theme[light][background_card]"] = req.Theme.Light.BackgroundCard
+		}
+		if req.Theme.Dark != nil {
+			fields["theme[dark][operational]"] = req.Theme.Dark.Operational
+			fields["theme[dark][degraded_performance]"] = req.Theme.Dark.DegradedPerformance
+			fields["theme[dark][partial_outage]"] = req.Theme.Dark.PartialOutage
+			fields["theme[dark][major_outage]"] = req.Theme.Dark.MajorOutage
+			fields["theme[dark][maintenance]"] = req.Theme.Dark.Maintenance
+			fields["theme[dark][empty]"] = req.Theme.Dark.Empty
+			fields["theme[dark][background]"] = req.Theme.Dark.Background
+			fields["theme[dark][foreground]"] = req.Theme.Dark.Foreground
+			fields["theme[dark][foreground_muted]"] = req.Theme.Dark.ForegroundMuted
+			fields["theme[dark][background_card]"] = req.Theme.Dark.BackgroundCard
+		}
+	}
+
+	// Add file removals (send "false" to remove)
+	for _, fieldName := range removals {
+		fields[fieldName] = "false"
+	}
+
+	// Build files slice for uploads
+	files := make([]FileUpload, len(uploads))
+	for i, upload := range uploads {
+		files[i] = FileUpload(upload)
+	}
+
+	// Use POST for the update (API uses POST not PUT)
+	var resp StatusPageResponse
+	if err := c.doMultipartRequest(ctx, "POST", path, fields, files, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }

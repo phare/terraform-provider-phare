@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strconv"
 
@@ -58,7 +59,11 @@ type UptimeStatusPageModel struct {
 	CreatedAt            types.String  `tfsdk:"created_at"`
 	Description          types.String  `tfsdk:"description"`
 	Domain               types.String  `tfsdk:"domain"`
+	FaviconDark          types.String  `tfsdk:"favicon_dark"`
+	FaviconLight         types.String  `tfsdk:"favicon_light"`
 	Id                   types.Int64   `tfsdk:"id"`
+	LogoDark             types.String  `tfsdk:"logo_dark"`
+	LogoLight            types.String  `tfsdk:"logo_light"`
 	Name                 types.String  `tfsdk:"name"`
 	ProjectId            types.Int64   `tfsdk:"project_id"`
 	SearchEngineIndexed  types.Bool    `tfsdk:"search_engine_indexed"`
@@ -104,8 +109,7 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 						},
 					},
 				},
-				Optional:            true,
-				Computed:            true,
+				Required:            true,
 				Description:         "List of components (monitors) to show on the status page",
 				MarkdownDescription: "List of components (monitors) to show on the status page",
 			},
@@ -131,10 +135,30 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					helpers.TrimString(),
 				},
 			},
+			"favicon_dark": schema.StringAttribute{
+				Optional:            true,
+				Description:         "Path to dark theme favicon file (png/svg). Remove attribute to delete favicon.",
+				MarkdownDescription: "Path to dark theme favicon file (png/svg). Remove attribute to delete favicon.",
+			},
+			"favicon_light": schema.StringAttribute{
+				Optional:            true,
+				Description:         "Path to light theme favicon file (png/svg). Remove attribute to delete favicon.",
+				MarkdownDescription: "Path to light theme favicon file (png/svg). Remove attribute to delete favicon.",
+			},
 			"id": schema.Int64Attribute{
 				Computed:            true,
 				Description:         "Status page ID",
 				MarkdownDescription: "Status page ID",
+			},
+			"logo_dark": schema.StringAttribute{
+				Optional:            true,
+				Description:         "Path to dark theme logo image file (jpeg/png/svg). Remove attribute to delete logo.",
+				MarkdownDescription: "Path to dark theme logo image file (jpeg/png/svg). Remove attribute to delete logo.",
+			},
+			"logo_light": schema.StringAttribute{
+				Optional:            true,
+				Description:         "Path to light theme logo image file (jpeg/png/svg). Remove attribute to delete logo.",
+				MarkdownDescription: "Path to light theme logo image file (jpeg/png/svg). Remove attribute to delete logo.",
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -745,6 +769,147 @@ func mapSubscriptionChannelsFromAPIResponse(apiChannels []string, diagnostics *d
 	return channelsList
 }
 
+// fileFieldInfo holds information about a file field for upload processing
+type fileFieldInfo struct {
+	fieldName         string
+	allowedExtensions []string
+}
+
+// statusPageFileFields defines the file fields and their allowed extensions
+var statusPageFileFields = []fileFieldInfo{
+	{"logo_light", helpers.LogoAllowedExtensions},
+	{"logo_dark", helpers.LogoAllowedExtensions},
+	{"favicon_light", helpers.FaviconAllowedExtensions},
+	{"favicon_dark", helpers.FaviconAllowedExtensions},
+}
+
+// getFileFieldValue returns the types.String value for a file field from the model
+func getFileFieldValue(model *UptimeStatusPageModel, fieldName string) types.String {
+	switch fieldName {
+	case "logo_light":
+		return model.LogoLight
+	case "logo_dark":
+		return model.LogoDark
+	case "favicon_light":
+		return model.FaviconLight
+	case "favicon_dark":
+		return model.FaviconDark
+	default:
+		return types.StringNull()
+	}
+}
+
+// hasFileChanges checks if there are any file upload or removal changes between plan and state
+func hasFileChanges(plan *UptimeStatusPageModel, state *UptimeStatusPageModel) bool {
+	for _, field := range statusPageFileFields {
+		planValue := getFileFieldValue(plan, field.fieldName)
+		var stateValue types.String
+		if state != nil {
+			stateValue = getFileFieldValue(state, field.fieldName)
+		} else {
+			stateValue = types.StringNull()
+		}
+
+		planHasValue := !planValue.IsNull() && !planValue.IsUnknown() && planValue.ValueString() != ""
+		stateHasValue := !stateValue.IsNull() && !stateValue.IsUnknown() && stateValue.ValueString() != ""
+
+		// Check for removal
+		if !planHasValue && stateHasValue {
+			return true
+		}
+		// Check for new upload or change
+		if planHasValue && (!stateHasValue || planValue.ValueString() != stateValue.ValueString()) {
+			return true
+		}
+	}
+	return false
+}
+
+// uploadStatusPageFiles handles uploading files for a status page.
+func (r *uptimeStatusPageResource) uploadStatusPageFiles(
+	ctx context.Context,
+	scopedClient *client.Client,
+	statusPageID int64,
+	apiReq *client.StatusPageRequest,
+	plan *UptimeStatusPageModel,
+	state *UptimeStatusPageModel,
+	diagnostics *diag.Diagnostics,
+) *client.StatusPageResponse {
+	var uploads []client.StatusPageFileUpload
+	var removals []string
+
+	for _, field := range statusPageFileFields {
+		planValue := getFileFieldValue(plan, field.fieldName)
+		var stateValue types.String
+		if state != nil {
+			stateValue = getFileFieldValue(state, field.fieldName)
+		} else {
+			stateValue = types.StringNull()
+		}
+
+		// Determine action based on plan vs state
+		planHasValue := !planValue.IsNull() && !planValue.IsUnknown() && planValue.ValueString() != ""
+		stateHasValue := !stateValue.IsNull() && !stateValue.IsUnknown() && stateValue.ValueString() != ""
+
+		if !planHasValue && stateHasValue {
+			// Remove: plan has no value but state does
+			removals = append(removals, field.fieldName)
+		} else if planHasValue {
+			// Upload needed if: new file, or path changed
+			needsUpload := !stateHasValue || planValue.ValueString() != stateValue.ValueString()
+
+			if needsUpload {
+				filePath := planValue.ValueString()
+
+				if err := helpers.ValidateImageFile(filePath, field.allowedExtensions); err != nil {
+					diagnostics.AddError(
+						"Invalid File",
+						fmt.Sprintf("Error validating %s file: %s", field.fieldName, err.Error()),
+					)
+					return nil
+				}
+
+				file, err := helpers.OpenFileForUpload(filePath)
+				if err != nil {
+					diagnostics.AddError(
+						"File Read Error",
+						fmt.Sprintf("Error opening %s file for upload: %s", field.fieldName, err.Error()),
+					)
+					return nil
+				}
+
+				uploads = append(uploads, client.StatusPageFileUpload{
+					FieldName: field.fieldName,
+					FileName:  filePath,
+					Content:   file,
+				})
+			}
+		}
+	}
+
+	// Only make API call if there are changes
+	if len(uploads) > 0 || len(removals) > 0 {
+		apiResp, err := scopedClient.UpdateStatusPageWithFiles(ctx, statusPageID, apiReq, uploads, removals)
+
+		// Close all opened files
+		for _, upload := range uploads {
+			if closer, ok := upload.Content.(interface{ Close() error }); ok {
+				closer.Close()
+			}
+		}
+
+		if err != nil {
+			diagnostics.AddError(
+				"File Upload Error",
+				fmt.Sprintf("Error uploading files to status page: %s", err.Error()),
+			)
+			return nil
+		}
+		return apiResp
+	}
+	return nil
+}
+
 func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan UptimeStatusPageModel
 
@@ -873,6 +1038,18 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 	plan.SubscriptionChannels = mapSubscriptionChannelsFromAPIResponse(apiResp.SubscriptionChannels, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// Upload files if any are specified (Create has no prior state)
+	if hasFileChanges(&plan, nil) {
+		fileResp := r.uploadStatusPageFiles(ctx, scopedClient, apiResp.ID, apiReq, &plan, nil, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		// Update timestamps from file upload response if available
+		if fileResp != nil {
+			plan.UpdatedAt = types.StringValue(fileResp.UpdatedAt)
+		}
 	}
 
 	// Save data into Terraform state
@@ -1091,6 +1268,18 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 	plan.SubscriptionChannels = mapSubscriptionChannelsFromAPIResponse(apiResp.SubscriptionChannels, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// Upload or remove files based on plan vs state differences
+	if hasFileChanges(&plan, &state) {
+		fileResp := r.uploadStatusPageFiles(ctx, scopedClient, apiResp.ID, apiReq, &plan, &state, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		// Update timestamps from file upload response if available
+		if fileResp != nil {
+			plan.UpdatedAt = types.StringValue(fileResp.UpdatedAt)
+		}
 	}
 
 	// Save updated data into Terraform state

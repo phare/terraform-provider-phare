@@ -11,6 +11,10 @@ resource "phare_uptime_status_page" "main" {
   subdomain             = "example" # example.status.phare.io
   domain                = "status.example.com"
   timeframe             = 30
+  logo_light            = "${path.module}/assets/logo-light.png"
+  logo_dark             = "${path.module}/assets/logo-dark.png"
+  favicon_light         = "${path.module}/assets/favicon.png"
+  favicon_dark          = "${path.module}/assets/favicon.png"
   color_scheme          = "all"
 
   theme {

@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -334,4 +336,210 @@ func (c *Client) WithProjectScope(projectID, projectSlug string) (*Client, error
 		c.terraformVersion,
 		c.isProjectScoped,
 	)
+}
+
+// FileUpload represents a file to be uploaded in a multipart request.
+type FileUpload struct {
+	FieldName string
+	FileName  string
+	Content   io.Reader
+}
+
+// doMultipartRequest performs an HTTP multipart/form-data request with file uploads.
+// It automatically retries on server errors (5xx) with exponential backoff.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - method: HTTP method (typically POST)
+//   - path: API path (e.g., "/uptime/status-pages/123")
+//   - fields: Form fields to include (field name -> value)
+//   - files: Files to upload
+//   - result: Pointer to store the response (will be unmarshaled from JSON), can be nil
+//
+// Returns an APIError if the request fails.
+func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fields map[string]string, files []FileUpload, result interface{}) error {
+	url := c.baseURL + path
+
+	var lastErr error
+	backoff := initialBackoff
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Log retry attempts
+		if attempt > 0 {
+			tflog.Debug(ctx, "Retrying Phare API multipart request", map[string]interface{}{
+				"attempt": attempt + 1,
+				"max":     maxRetries + 1,
+				"backoff": backoff.String(),
+			})
+		}
+
+		// Create multipart body
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+
+		// Add form fields
+		for fieldName, fieldValue := range fields {
+			if err := writer.WriteField(fieldName, fieldValue); err != nil {
+				tflog.Error(ctx, "Failed to write multipart field", map[string]interface{}{
+					"field": fieldName,
+					"error": err.Error(),
+				})
+				return fmt.Errorf("failed to write multipart field %s: %w", fieldName, err)
+			}
+		}
+
+		// Add files
+		for _, file := range files {
+			part, err := writer.CreateFormFile(file.FieldName, filepath.Base(file.FileName))
+			if err != nil {
+				tflog.Error(ctx, "Failed to create form file", map[string]interface{}{
+					"field": file.FieldName,
+					"error": err.Error(),
+				})
+				return fmt.Errorf("failed to create form file %s: %w", file.FieldName, err)
+			}
+			if _, err := io.Copy(part, file.Content); err != nil {
+				tflog.Error(ctx, "Failed to copy file content", map[string]interface{}{
+					"field": file.FieldName,
+					"error": err.Error(),
+				})
+				return fmt.Errorf("failed to copy file content for %s: %w", file.FieldName, err)
+			}
+		}
+
+		// Close the multipart writer to finalize the body
+		if err := writer.Close(); err != nil {
+			tflog.Error(ctx, "Failed to close multipart writer", map[string]interface{}{
+				"error": err.Error(),
+			})
+			return fmt.Errorf("failed to close multipart writer: %w", err)
+		}
+
+		// Log request at DEBUG level (summary only)
+		tflog.Debug(ctx, "Phare API multipart request", map[string]interface{}{
+			"method":      method,
+			"url":         url,
+			"field_count": len(fields),
+			"file_count":  len(files),
+		})
+
+		// Create request
+		req, err := http.NewRequestWithContext(ctx, method, url, &body)
+		if err != nil {
+			tflog.Error(ctx, "Failed to create HTTP request", map[string]interface{}{
+				"error": err.Error(),
+			})
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+
+		// Set headers
+		req.Header.Set("Authorization", "Bearer "+c.token)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", c.userAgent)
+
+		// Add project scoping headers if configured
+		if c.projectID != "" {
+			req.Header.Set("X-Phare-Project-Id", c.projectID)
+		}
+		if c.projectSlug != "" {
+			req.Header.Set("X-Phare-Project-Slug", c.projectSlug)
+		}
+
+		// Perform request with timing
+		startTime := time.Now()
+		resp, err := c.httpClient.Do(req)
+		duration := time.Since(startTime)
+
+		if err != nil {
+			tflog.Error(ctx, "Phare API multipart request failed", map[string]interface{}{
+				"error":       err.Error(),
+				"url":         url,
+				"duration_ms": duration.Milliseconds(),
+			})
+			return fmt.Errorf("failed to perform request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		// Log response at DEBUG level (summary)
+		tflog.Debug(ctx, "Phare API multipart response", map[string]interface{}{
+			"status_code": resp.StatusCode,
+			"duration_ms": duration.Milliseconds(),
+		})
+
+		// Read response body
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			tflog.Error(ctx, "Failed to read response body", map[string]interface{}{
+				"error":       err.Error(),
+				"status_code": resp.StatusCode,
+			})
+			return fmt.Errorf("failed to read response body: %w", err)
+		}
+
+		// Log response body at TRACE level (full details)
+		if len(respBody) > 0 {
+			tflog.Trace(ctx, "Phare API multipart response body", map[string]interface{}{
+				"body":        string(respBody),
+				"status_code": resp.StatusCode,
+			})
+		}
+
+		// Handle successful responses
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			if result != nil && resp.StatusCode != http.StatusNoContent {
+				if len(respBody) > 0 {
+					if err := json.Unmarshal(respBody, result); err != nil {
+						tflog.Error(ctx, "Failed to unmarshal response", map[string]interface{}{
+							"error": err.Error(),
+						})
+						return fmt.Errorf("failed to unmarshal response: %w", err)
+					}
+				}
+			}
+			return nil
+		}
+
+		// Parse error response
+		lastErr = parseAPIError(resp.StatusCode, respBody)
+
+		// Log HTTP error responses at WARN level
+		tflog.Warn(ctx, "Phare API multipart returned error", map[string]interface{}{
+			"status_code": resp.StatusCode,
+			"error":       lastErr.Error(),
+			"body":        string(respBody),
+		})
+
+		// Don't retry on client errors (4xx) - these are permanent
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			return lastErr
+		}
+
+		// Retry on server errors (5xx) if we have attempts left
+		if resp.StatusCode >= 500 && attempt < maxRetries {
+			tflog.Debug(ctx, "Server error, will retry", map[string]interface{}{
+				"status_code":   resp.StatusCode,
+				"retry_in":      backoff.String(),
+				"attempts_left": maxRetries - attempt,
+			})
+
+			// Wait with exponential backoff before retrying
+			select {
+			case <-time.After(backoff):
+				// Calculate next backoff with exponential increase
+				backoff = time.Duration(float64(backoff) * math.Pow(2, float64(attempt)))
+			case <-ctx.Done():
+				tflog.Error(ctx, "Request cancelled during retry backoff", map[string]interface{}{
+					"error": ctx.Err().Error(),
+				})
+				return ctx.Err()
+			}
+			continue
+		}
+
+		// Return error if no more retries or not a server error
+		return lastErr
+	}
+
+	return lastErr
 }
