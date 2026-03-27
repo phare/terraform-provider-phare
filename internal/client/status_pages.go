@@ -237,11 +237,7 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 	// Build files slice for uploads
 	files := make([]FileUpload, len(uploads))
 	for i, upload := range uploads {
-		files[i] = FileUpload{
-			FieldName: upload.FieldName,
-			FileName:  upload.FileName,
-			Content:   upload.Content,
-		}
+		files[i] = FileUpload(upload)
 	}
 
 	// Use POST for the update (API uses POST not PUT)
