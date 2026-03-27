@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.7] - 2026-03-27
+
+### Added
+
+- `phare_uptime_status_page` resource now supports logo and favicon file uploads via new attributes:
+  - `logo_light` - Path to light theme logo image file (jpeg/png/svg)
+  - `logo_dark` - Path to dark theme logo image file (jpeg/png/svg)
+  - `favicon_light` - Path to light theme favicon file (png/svg)
+  - `favicon_dark` - Path to dark theme favicon file (png/svg)
+
+### Changed
+
+- `components` attribute is now required for the `phare_uptime_status_page` resource
+
 ## [0.0.6] - 2026-03-14
 
 ### Changed
