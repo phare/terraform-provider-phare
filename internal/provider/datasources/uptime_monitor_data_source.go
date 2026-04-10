@@ -43,6 +43,7 @@ type monitorModel struct {
 	SuccessAssertions     types.String  `tfsdk:"success_assertions"`
 	IncidentConfirmations types.Int64   `tfsdk:"incident_confirmations"`
 	RecoveryConfirmations types.Int64   `tfsdk:"recovery_confirmations"`
+	RegionThreshold       types.Int64   `tfsdk:"region_threshold"`
 	Regions               types.List    `tfsdk:"regions"`
 	Status                types.String  `tfsdk:"status"`
 	Paused                types.Bool    `tfsdk:"paused"`
@@ -64,6 +65,7 @@ func mapMonitorToModel(ctx context.Context, monitor *client.MonitorResponse, res
 		Timeout:               types.Int64Value(monitor.Timeout),
 		IncidentConfirmations: types.Int64Value(monitor.IncidentConfirmations),
 		RecoveryConfirmations: types.Int64Value(monitor.RecoveryConfirmations),
+		RegionThreshold:       types.Int64Value(monitor.RegionThreshold),
 		Status:                types.StringValue(monitor.Status),
 		Paused:                types.BoolValue(monitor.Paused),
 		CreatedAt:             types.StringValue(monitor.CreatedAt),
@@ -349,6 +351,10 @@ func monitorSchemaAttributes() map[string]schema.Attribute {
 		"recovery_confirmations": schema.Int64Attribute{
 			Computed:    true,
 			Description: "Number of confirmations before marking as recovered",
+		},
+		"region_threshold": schema.Int64Attribute{
+			Computed:    true,
+			Description: "Number of regions that must fail before an incident is confirmed",
 		},
 		"regions": schema.ListAttribute{
 			ElementType: types.StringType,

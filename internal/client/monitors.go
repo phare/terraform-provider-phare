@@ -15,6 +15,7 @@ type MonitorRequest struct {
 	SuccessAssertions     []map[string]interface{} `json:"success_assertions,omitempty"`
 	IncidentConfirmations int64                    `json:"incident_confirmations"`
 	RecoveryConfirmations int64                    `json:"recovery_confirmations"`
+	RegionThreshold       int64                    `json:"region_threshold"`
 	Regions               []string                 `json:"regions"`
 }
 
@@ -54,6 +55,7 @@ type MonitorResponse struct {
 	SuccessAssertions     []map[string]interface{} `json:"success_assertions,omitempty"`
 	IncidentConfirmations int64                    `json:"incident_confirmations"`
 	RecoveryConfirmations int64                    `json:"recovery_confirmations"`
+	RegionThreshold       int64                    `json:"region_threshold"`
 	Regions               []string                 `json:"regions"`
 	Status                string                   `json:"status"`
 	Paused                bool                     `json:"paused"`

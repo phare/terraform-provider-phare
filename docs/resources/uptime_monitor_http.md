@@ -33,6 +33,7 @@ resource "phare_uptime_monitor_http" "website" {
   timeout                = 10000
   incident_confirmations = 3
   recovery_confirmations = 3
+  region_threshold       = 1
   regions                = ["as-jpn-hnd"]
 
   success_assertions {
@@ -81,6 +82,7 @@ resource "phare_uptime_monitor_http" "website" {
 ### Optional
 
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
+- `region_threshold` (Number) Number of regions that must fail before an incident is confirmed (1-10)
 - `request` (Block, Optional) HTTP/HTTPS request configuration (see [below for nested schema](#nestedblock--request))
 - `success_assertions` (Block, Optional) List of assertions that must be true for the check to be considered successful, [see docs](https://docs.phare.io/uptime/monitors#success-assertions) (see [below for nested schema](#nestedblock--success_assertions))
 

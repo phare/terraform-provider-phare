@@ -27,6 +27,7 @@ resource "phare_uptime_monitor_tcp" "service" {
   timeout                = 7000
   incident_confirmations = 1
   recovery_confirmations = 3
+  region_threshold       = 1
   regions                = ["eu-fra-cdg"]
 }
 ```
@@ -46,6 +47,7 @@ resource "phare_uptime_monitor_tcp" "service" {
 ### Optional
 
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
+- `region_threshold` (Number) Number of regions that must fail before an incident is confirmed (1-10)
 - `request` (Block, Optional) TCP request configuration (see [below for nested schema](#nestedblock--request))
 
 ### Read-Only

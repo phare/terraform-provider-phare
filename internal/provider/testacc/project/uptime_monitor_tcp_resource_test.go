@@ -37,6 +37,7 @@ resource "phare_uptime_monitor_tcp" "test" {
   timeout                = 7000
   incident_confirmations = 1
   recovery_confirmations = 3
+  region_threshold       = 1
   regions                = ["eu-fra-cdg"]
 }
 `,
@@ -46,6 +47,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "timeout", "7000"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "incident_confirmations", "1"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "recovery_confirmations", "3"),
+					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "region_threshold", "1"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "request.host", "invariance.dev"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "request.port", "443"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "request.connection", "tls"),
@@ -73,6 +75,7 @@ resource "phare_uptime_monitor_tcp" "test" {
   timeout                = 10000
   incident_confirmations = 2
   recovery_confirmations = 1
+  region_threshold       = 1
   regions                = ["eu-fra-cdg"]
 }
 `,
@@ -82,6 +85,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "timeout", "10000"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "incident_confirmations", "2"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "recovery_confirmations", "1"),
+					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "region_threshold", "1"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "request.port", "80"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "request.connection", "plain"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "request.tls_skip_verify", "true"),

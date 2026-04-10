@@ -37,6 +37,7 @@ resource "phare_uptime_monitor_http" "test" {
 
 	incident_confirmations = 3
 	recovery_confirmations = 2
+	region_threshold       = 1
 
 	request {
 		method = "HEAD"
@@ -57,6 +58,7 @@ resource "phare_uptime_monitor_http" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "timeout", "15000"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "incident_confirmations", "3"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "recovery_confirmations", "2"),
+					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "region_threshold", "1"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.method", "HEAD"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.url", "https://invariance.dev"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.follow_redirects", "true"),
@@ -86,6 +88,7 @@ resource "phare_uptime_monitor_http" "test" {
 
 	incident_confirmations = 2
 	recovery_confirmations = 1
+	region_threshold       = 1
 
 	request {
 		method = "GET"
@@ -103,6 +106,7 @@ resource "phare_uptime_monitor_http" "test" {
 				Check: testingresource.ComposeAggregateTestCheckFunc(
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "name", "HTTP Website Updated"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "interval", "60"),
+					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "region_threshold", "1"),
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.method", "GET"),
 				),
 			},

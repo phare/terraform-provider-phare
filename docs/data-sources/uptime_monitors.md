@@ -42,6 +42,7 @@ Read-Only:
 - `project_id` (Number) Parent project ID
 - `protocol` (String) Monitoring protocol (http, tcp)
 - `recovery_confirmations` (Number) Number of confirmations before marking as recovered
+- `region_threshold` (Number) Number of regions that must fail before an incident is confirmed
 - `regions` (List of String) Regions where monitoring is performed
 - `request` (Attributes) Monitor request configuration (varies by protocol) (see [below for nested schema](#nestedatt--monitors--request))
 - `response_time` (Number) Latest response time in milliseconds

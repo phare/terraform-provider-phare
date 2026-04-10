@@ -348,6 +348,17 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_monitor_http", &resp.Diagnostics)
+
+	// Validate region_threshold <= len(regions)
+	if !plan.RegionThreshold.IsNull() && !plan.RegionThreshold.IsUnknown() && !plan.Regions.IsNull() && !plan.Regions.IsUnknown() {
+		regionCount := int64(len(plan.Regions.Elements()))
+		if plan.RegionThreshold.ValueInt64() > regionCount {
+			resp.Diagnostics.AddError(
+				"Invalid region_threshold",
+				fmt.Sprintf("region_threshold (%d) must not exceed the number of regions (%d)", plan.RegionThreshold.ValueInt64(), regionCount),
+			)
+		}
+	}
 }
 
 // Helper function to convert Terraform HTTP request model to client request config
@@ -677,6 +688,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 		Regions:               regions,
 		IncidentConfirmations: plan.IncidentConfirmations.ValueInt64(),
 		RecoveryConfirmations: plan.RecoveryConfirmations.ValueInt64(),
+		RegionThreshold:       plan.RegionThreshold.ValueInt64(),
 		SuccessAssertions:     successAssertions,
 	}
 
@@ -697,6 +709,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 	plan.Timeout = types.Int64Value(apiResp.Timeout)
 	plan.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
 	plan.RecoveryConfirmations = types.Int64Value(apiResp.RecoveryConfirmations)
+	plan.RegionThreshold = types.Int64Value(apiResp.RegionThreshold)
 	plan.Status = types.StringValue(apiResp.Status)
 	plan.Paused = types.BoolValue(apiResp.Paused)
 	plan.ProjectId = types.Int64Value(apiResp.ProjectID)
@@ -778,6 +791,7 @@ func (r *uptimeMonitorHttpResource) Read(ctx context.Context, req resource.ReadR
 	state.Timeout = types.Int64Value(apiResp.Timeout)
 	state.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
 	state.RecoveryConfirmations = types.Int64Value(apiResp.RecoveryConfirmations)
+	state.RegionThreshold = types.Int64Value(apiResp.RegionThreshold)
 	state.Status = types.StringValue(apiResp.Status)
 	state.Paused = types.BoolValue(apiResp.Paused)
 	state.ProjectId = types.Int64Value(apiResp.ProjectID)
@@ -938,6 +952,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 		Regions:               regions,
 		IncidentConfirmations: plan.IncidentConfirmations.ValueInt64(),
 		RecoveryConfirmations: plan.RecoveryConfirmations.ValueInt64(),
+		RegionThreshold:       plan.RegionThreshold.ValueInt64(),
 		SuccessAssertions:     successAssertions,
 	}
 
@@ -958,6 +973,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	plan.Timeout = types.Int64Value(apiResp.Timeout)
 	plan.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
 	plan.RecoveryConfirmations = types.Int64Value(apiResp.RecoveryConfirmations)
+	plan.RegionThreshold = types.Int64Value(apiResp.RegionThreshold)
 	plan.Status = types.StringValue(apiResp.Status)
 	plan.Paused = types.BoolValue(apiResp.Paused)
 	plan.ProjectId = types.Int64Value(apiResp.ProjectID)
