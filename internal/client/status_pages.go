@@ -20,6 +20,9 @@ type StatusPageRequest struct {
 	Components           []StatusPageComponent `json:"components"`
 	Timeframe            *int64                `json:"timeframe,omitempty"`
 	SubscriptionChannels []string              `json:"subscription_channels,omitempty"`
+	AccessIPs            []string              `json:"access_ips,omitempty"`
+	AccessToken          *string               `json:"access_token,omitempty"`
+	AccessPassword       *string               `json:"access_password,omitempty"`
 }
 
 // StatusPageTheme represents theme customization for a status page.
@@ -52,22 +55,25 @@ type StatusPageComponent struct {
 
 // StatusPageResponse represents a status page response from the API.
 type StatusPageResponse struct {
-	ID                   int64                 `json:"id"`
-	ProjectID            int64                 `json:"project_id"`
-	Name                 string                `json:"name"`
-	Subdomain            *string               `json:"subdomain,omitempty"`
-	Domain               *string               `json:"domain,omitempty"`
-	Title                string                `json:"title"`
-	Description          string                `json:"description"`
-	SearchEngineIndexed  bool                  `json:"search_engine_indexed"`
-	WebsiteURL           string                `json:"website_url"`
-	ColorScheme          *string               `json:"color_scheme,omitempty"`
-	Theme                *StatusPageTheme      `json:"theme,omitempty"`
-	Components           []StatusPageComponent `json:"components"`
-	Timeframe            *int64                `json:"timeframe,omitempty"`
-	SubscriptionChannels []string              `json:"subscription_channels,omitempty"`
-	CreatedAt            string                `json:"created_at"`
-	UpdatedAt            string                `json:"updated_at"`
+	ID                    int64                 `json:"id"`
+	ProjectID             int64                 `json:"project_id"`
+	Name                  string                `json:"name"`
+	Subdomain             *string               `json:"subdomain,omitempty"`
+	Domain                *string               `json:"domain,omitempty"`
+	Title                 string                `json:"title"`
+	Description           string                `json:"description"`
+	SearchEngineIndexed   bool                  `json:"search_engine_indexed"`
+	WebsiteURL            string                `json:"website_url"`
+	ColorScheme           *string               `json:"color_scheme,omitempty"`
+	Theme                 *StatusPageTheme      `json:"theme,omitempty"`
+	Components            []StatusPageComponent `json:"components"`
+	Timeframe             *int64                `json:"timeframe,omitempty"`
+	SubscriptionChannels  []string              `json:"subscription_channels,omitempty"`
+	AccessIPs             []string              `json:"access_ips,omitempty"`
+	AccessPasswordEnabled bool                  `json:"access_password_enabled"`
+	AccessTokenEnabled    bool                  `json:"access_token_enabled"`
+	CreatedAt             string                `json:"created_at"`
+	UpdatedAt             string                `json:"updated_at"`
 }
 
 // CreateStatusPage creates a new status page.
@@ -189,6 +195,19 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 	// Add subscription channels
 	for i, channel := range req.SubscriptionChannels {
 		fields[fmt.Sprintf("subscription_channels[%d]", i)] = channel
+	}
+
+	// Add access IPs
+	for i, ip := range req.AccessIPs {
+		fields[fmt.Sprintf("access_ips[%d]", i)] = ip
+	}
+
+	// Add access token and password if provided
+	if req.AccessToken != nil {
+		fields["access_token"] = *req.AccessToken
+	}
+	if req.AccessPassword != nil {
+		fields["access_password"] = *req.AccessPassword
 	}
 
 	// Add theme fields if present

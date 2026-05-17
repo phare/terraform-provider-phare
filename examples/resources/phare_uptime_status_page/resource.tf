@@ -54,4 +54,9 @@ resource "phare_uptime_status_page" "main" {
       componentable_id   = phare_uptime_monitor.web.id
     }
   ]
+
+  # Requires an active Scale plan subscription
+  access_password = "supersecret"
+  access_token    = "mytoken"
+  access_ips      = ["192.168.1.0/24", "10.0.0.1"]
 }

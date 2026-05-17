@@ -31,21 +31,24 @@ type uptimeStatusPageDataSource struct {
 // statusPageModel describes the common status page data model used by both
 // the single status page and status pages list data sources.
 type statusPageModel struct {
-	ID                  types.Int64  `tfsdk:"id"`
-	ProjectID           types.Int64  `tfsdk:"project_id"`
-	Name                types.String `tfsdk:"name"`
-	Subdomain           types.String `tfsdk:"subdomain"`
-	Domain              types.String `tfsdk:"domain"`
-	Title               types.String `tfsdk:"title"`
-	Description         types.String `tfsdk:"description"`
-	SearchEngineIndexed types.Bool   `tfsdk:"search_engine_indexed"`
-	WebsiteURL          types.String `tfsdk:"website_url"`
-	ColorScheme         types.String `tfsdk:"color_scheme"`
-	Timeframe           types.Int64  `tfsdk:"timeframe"`
-	Theme               types.Object `tfsdk:"theme"`
-	Components          types.List   `tfsdk:"components"`
-	CreatedAt           types.String `tfsdk:"created_at"`
-	UpdatedAt           types.String `tfsdk:"updated_at"`
+	ID                    types.Int64  `tfsdk:"id"`
+	ProjectID             types.Int64  `tfsdk:"project_id"`
+	Name                  types.String `tfsdk:"name"`
+	Subdomain             types.String `tfsdk:"subdomain"`
+	Domain                types.String `tfsdk:"domain"`
+	Title                 types.String `tfsdk:"title"`
+	Description           types.String `tfsdk:"description"`
+	SearchEngineIndexed   types.Bool   `tfsdk:"search_engine_indexed"`
+	WebsiteURL            types.String `tfsdk:"website_url"`
+	ColorScheme           types.String `tfsdk:"color_scheme"`
+	Timeframe             types.Int64  `tfsdk:"timeframe"`
+	Theme                 types.Object `tfsdk:"theme"`
+	Components            types.List   `tfsdk:"components"`
+	AccessIPs             types.List   `tfsdk:"access_ips"`
+	AccessPasswordEnabled types.Bool   `tfsdk:"access_password_enabled"`
+	AccessTokenEnabled    types.Bool   `tfsdk:"access_token_enabled"`
+	CreatedAt             types.String `tfsdk:"created_at"`
+	UpdatedAt             types.String `tfsdk:"updated_at"`
 }
 
 // mapStatusPageToModel maps an API status page response to the shared status page model
@@ -214,6 +217,15 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 			},
 		})
 	}
+
+	// Map access IPs
+	model.AccessIPs = helpers.StringSliceToList(page.AccessIPs, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return statusPageModel{}
+	}
+
+	model.AccessPasswordEnabled = types.BoolValue(page.AccessPasswordEnabled)
+	model.AccessTokenEnabled = types.BoolValue(page.AccessTokenEnabled)
 
 	return model
 }
@@ -394,6 +406,19 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 		"updated_at": schema.StringAttribute{
 			Computed:    true,
 			Description: "Last update timestamp",
+		},
+		"access_ips": schema.ListAttribute{
+			ElementType: types.StringType,
+			Computed:    true,
+			Description: "List of IP addresses or CIDR ranges allowed to access the status page",
+		},
+		"access_password_enabled": schema.BoolAttribute{
+			Computed:    true,
+			Description: "Whether a password is currently set on the status page",
+		},
+		"access_token_enabled": schema.BoolAttribute{
+			Computed:    true,
+			Description: "Whether an access token is currently set on the status page",
 		},
 	}
 }

@@ -54,33 +54,67 @@ type ComponentModel struct {
 
 // UptimeStatusPageModel defines the data model for the status page resource
 type UptimeStatusPageModel struct {
-	ColorScheme          types.String  `tfsdk:"color_scheme"`
-	Components           types.List    `tfsdk:"components"`
-	CreatedAt            types.String  `tfsdk:"created_at"`
-	Description          types.String  `tfsdk:"description"`
-	Domain               types.String  `tfsdk:"domain"`
-	FaviconDark          types.String  `tfsdk:"favicon_dark"`
-	FaviconLight         types.String  `tfsdk:"favicon_light"`
-	Id                   types.Int64   `tfsdk:"id"`
-	LogoDark             types.String  `tfsdk:"logo_dark"`
-	LogoLight            types.String  `tfsdk:"logo_light"`
-	Name                 types.String  `tfsdk:"name"`
-	ProjectId            types.Int64   `tfsdk:"project_id"`
-	SearchEngineIndexed  types.Bool    `tfsdk:"search_engine_indexed"`
-	Subdomain            types.String  `tfsdk:"subdomain"`
-	SubscriptionChannels types.List    `tfsdk:"subscription_channels"`
-	Theme                types.Object  `tfsdk:"theme"`
-	Timeframe            types.Int64   `tfsdk:"timeframe"`
-	Title                types.String  `tfsdk:"title"`
-	UpdatedAt            types.String  `tfsdk:"updated_at"`
-	WebsiteUrl           types.String  `tfsdk:"website_url"`
-	ProjectScope         types.Dynamic `tfsdk:"project_scope"`
+	AccessIPs             types.List    `tfsdk:"access_ips"`
+	AccessPassword        types.String  `tfsdk:"access_password"`
+	AccessPasswordEnabled types.Bool    `tfsdk:"access_password_enabled"`
+	AccessToken           types.String  `tfsdk:"access_token"`
+	AccessTokenEnabled    types.Bool    `tfsdk:"access_token_enabled"`
+	ColorScheme           types.String  `tfsdk:"color_scheme"`
+	Components            types.List    `tfsdk:"components"`
+	CreatedAt             types.String  `tfsdk:"created_at"`
+	Description           types.String  `tfsdk:"description"`
+	Domain                types.String  `tfsdk:"domain"`
+	FaviconDark           types.String  `tfsdk:"favicon_dark"`
+	FaviconLight          types.String  `tfsdk:"favicon_light"`
+	Id                    types.Int64   `tfsdk:"id"`
+	LogoDark              types.String  `tfsdk:"logo_dark"`
+	LogoLight             types.String  `tfsdk:"logo_light"`
+	Name                  types.String  `tfsdk:"name"`
+	ProjectId             types.Int64   `tfsdk:"project_id"`
+	SearchEngineIndexed   types.Bool    `tfsdk:"search_engine_indexed"`
+	Subdomain             types.String  `tfsdk:"subdomain"`
+	SubscriptionChannels  types.List    `tfsdk:"subscription_channels"`
+	Theme                 types.Object  `tfsdk:"theme"`
+	Timeframe             types.Int64   `tfsdk:"timeframe"`
+	Title                 types.String  `tfsdk:"title"`
+	UpdatedAt             types.String  `tfsdk:"updated_at"`
+	WebsiteUrl            types.String  `tfsdk:"website_url"`
+	ProjectScope          types.Dynamic `tfsdk:"project_scope"`
 }
 
 // UptimeStatusPageResourceSchema defines the schema for the status page resource
 func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"access_ips": schema.ListAttribute{
+				ElementType:         types.StringType,
+				Optional:            true,
+				Computed:            true,
+				Description:         "List of IP addresses or CIDR ranges allowed to access the status page. Requires an active Scale plan subscription.",
+				MarkdownDescription: "List of IP addresses or CIDR ranges allowed to access the status page. Requires an active Scale plan subscription.",
+			},
+			"access_password": schema.StringAttribute{
+				Optional:            true,
+				Sensitive:           true,
+				Description:         "Password required to access the status page. Requires an active Scale plan subscription.",
+				MarkdownDescription: "Password required to access the status page. Requires an active Scale plan subscription.",
+			},
+			"access_password_enabled": schema.BoolAttribute{
+				Computed:            true,
+				Description:         "Whether a password is currently set on the status page.",
+				MarkdownDescription: "Whether a password is currently set on the status page.",
+			},
+			"access_token": schema.StringAttribute{
+				Optional:            true,
+				Sensitive:           true,
+				Description:         "Token required to access the status page. Requires an active Scale plan subscription.",
+				MarkdownDescription: "Token required to access the status page. Requires an active Scale plan subscription.",
+			},
+			"access_token_enabled": schema.BoolAttribute{
+				Computed:            true,
+				Description:         "Whether an access token is currently set on the status page.",
+				MarkdownDescription: "Whether an access token is currently set on the status page.",
+			},
 			"color_scheme": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
@@ -754,21 +788,6 @@ func mapComponentsFromAPIResponse(ctx context.Context, apiComponents []client.St
 }
 
 // Helper function to map subscription channels from API response
-func mapSubscriptionChannelsFromAPIResponse(apiChannels []string, diagnostics *diag.Diagnostics) types.List {
-	if len(apiChannels) == 0 {
-		return types.ListNull(types.StringType)
-	}
-
-	channelsElements := make([]attr.Value, len(apiChannels))
-	for i, channel := range apiChannels {
-		channelsElements[i] = types.StringValue(channel)
-	}
-
-	channelsList, diagsObj := types.ListValue(types.StringType, channelsElements)
-	diagnostics.Append(diagsObj...)
-	return channelsList
-}
-
 // fileFieldInfo holds information about a file field for upload processing
 type fileFieldInfo struct {
 	fieldName         string
@@ -984,6 +1003,26 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 		apiReq.Domain = &domain
 	}
 
+	// Add access IPs if specified
+	if !plan.AccessIPs.IsNull() && !plan.AccessIPs.IsUnknown() {
+		var accessIPs []string
+		resp.Diagnostics.Append(plan.AccessIPs.ElementsAs(ctx, &accessIPs, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		apiReq.AccessIPs = accessIPs
+	}
+
+	// Add access token and password if specified
+	if !plan.AccessToken.IsNull() && !plan.AccessToken.IsUnknown() {
+		token := plan.AccessToken.ValueString()
+		apiReq.AccessToken = &token
+	}
+	if !plan.AccessPassword.IsNull() && !plan.AccessPassword.IsUnknown() {
+		password := plan.AccessPassword.ValueString()
+		apiReq.AccessPassword = &password
+	}
+
 	// Call API to create status page
 	apiResp, err := scopedClient.CreateStatusPage(ctx, apiReq)
 	if err != nil {
@@ -1035,10 +1074,20 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	plan.SubscriptionChannels = mapSubscriptionChannelsFromAPIResponse(apiResp.SubscriptionChannels, &resp.Diagnostics)
+	plan.SubscriptionChannels = helpers.StringSliceToList(apiResp.SubscriptionChannels, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// Map access IPs from API response
+	plan.AccessIPs = helpers.StringSliceToList(apiResp.AccessIPs, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Map access enabled flags from API response (token/password values are write-only and not returned)
+	plan.AccessPasswordEnabled = types.BoolValue(apiResp.AccessPasswordEnabled)
+	plan.AccessTokenEnabled = types.BoolValue(apiResp.AccessTokenEnabled)
 
 	// Upload files if any are specified (Create has no prior state)
 	if hasFileChanges(&plan, nil) {
@@ -1125,10 +1174,21 @@ func (r *uptimeStatusPageResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
-	state.SubscriptionChannels = mapSubscriptionChannelsFromAPIResponse(apiResp.SubscriptionChannels, &resp.Diagnostics)
+	state.SubscriptionChannels = helpers.StringSliceToList(apiResp.SubscriptionChannels, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// Map access IPs from API response
+	state.AccessIPs = helpers.StringSliceToList(apiResp.AccessIPs, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Map access enabled flags from API response (token/password values are write-only and not returned)
+	state.AccessPasswordEnabled = types.BoolValue(apiResp.AccessPasswordEnabled)
+	state.AccessTokenEnabled = types.BoolValue(apiResp.AccessTokenEnabled)
+	// Preserve write-only access_token and access_password from prior state since the API never returns them
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -1215,6 +1275,26 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 		apiReq.Domain = &domain
 	}
 
+	// Add access IPs if specified
+	if !plan.AccessIPs.IsNull() && !plan.AccessIPs.IsUnknown() {
+		var accessIPs []string
+		resp.Diagnostics.Append(plan.AccessIPs.ElementsAs(ctx, &accessIPs, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		apiReq.AccessIPs = accessIPs
+	}
+
+	// Add access token and password if specified
+	if !plan.AccessToken.IsNull() && !plan.AccessToken.IsUnknown() {
+		token := plan.AccessToken.ValueString()
+		apiReq.AccessToken = &token
+	}
+	if !plan.AccessPassword.IsNull() && !plan.AccessPassword.IsUnknown() {
+		password := plan.AccessPassword.ValueString()
+		apiReq.AccessPassword = &password
+	}
+
 	// Call API to update status page using ID from current state (note: API uses POST not PUT)
 	apiResp, err := scopedClient.UpdateStatusPage(ctx, state.Id.ValueInt64(), apiReq)
 	if err != nil {
@@ -1265,10 +1345,20 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	plan.SubscriptionChannels = mapSubscriptionChannelsFromAPIResponse(apiResp.SubscriptionChannels, &resp.Diagnostics)
+	plan.SubscriptionChannels = helpers.StringSliceToList(apiResp.SubscriptionChannels, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// Map access IPs from API response
+	plan.AccessIPs = helpers.StringSliceToList(apiResp.AccessIPs, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Map access enabled flags from API response (token/password values are write-only and not returned)
+	plan.AccessPasswordEnabled = types.BoolValue(apiResp.AccessPasswordEnabled)
+	plan.AccessTokenEnabled = types.BoolValue(apiResp.AccessTokenEnabled)
 
 	// Upload or remove files based on plan vs state differences
 	if hasFileChanges(&plan, &state) {

@@ -69,6 +69,11 @@ resource "phare_uptime_status_page" "main" {
       componentable_id   = phare_uptime_monitor.web.id
     }
   ]
+
+  # Requires an active Scale plan subscription
+  access_password = "supersecret"
+  access_token    = "mytoken"
+  access_ips      = ["192.168.1.0/24", "10.0.0.1"]
 }
 ```
 
@@ -88,6 +93,9 @@ resource "phare_uptime_status_page" "main" {
 
 ### Optional
 
+- `access_ips` (List of String) List of IP addresses or CIDR ranges allowed to access the status page. Requires an active Scale plan subscription.
+- `access_password` (String, Sensitive) Password required to access the status page. Requires an active Scale plan subscription.
+- `access_token` (String, Sensitive) Token required to access the status page. Requires an active Scale plan subscription.
 - `color_scheme` (String) Available color schemes for the status page (all, dark, or light). Defaults to all.
 - `domain` (String) Custom domain for the status page, [see docs](https://docs.phare.io/uptime/status-pages#custom-domain)
 - `favicon_dark` (String) Path to dark theme favicon file (png/svg). Remove attribute to delete favicon.
@@ -100,6 +108,8 @@ resource "phare_uptime_status_page" "main" {
 
 ### Read-Only
 
+- `access_password_enabled` (Boolean) Whether a password is currently set on the status page.
+- `access_token_enabled` (Boolean) Whether an access token is currently set on the status page.
 - `created_at` (String) Date of creation
 - `id` (Number) Status page ID
 - `project_id` (Number) Parent project ID

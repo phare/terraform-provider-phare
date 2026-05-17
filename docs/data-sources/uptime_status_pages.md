@@ -32,6 +32,9 @@ data "phare_uptime_status_pages" "all" {}
 
 Read-Only:
 
+- `access_ips` (List of String) List of IP addresses or CIDR ranges allowed to access the status page
+- `access_password_enabled` (Boolean) Whether a password is currently set on the status page
+- `access_token_enabled` (Boolean) Whether an access token is currently set on the status page
 - `color_scheme` (String) Available color schemes for the status page (all, dark, or light)
 - `components` (Attributes List) List of components (monitors) shown on the status page (see [below for nested schema](#nestedatt--status_pages--components))
 - `created_at` (String) Creation timestamp

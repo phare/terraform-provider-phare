@@ -7,6 +7,7 @@ import (
 
 	"terraform-provider-phare/internal/client"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -143,4 +144,21 @@ func createScopedClient(
 	}
 
 	return scopedClient
+}
+
+// StringSliceToList converts a []string to a types.List of StringType.
+// Returns a null list if the slice is empty.
+func StringSliceToList(values []string, diagnostics *diag.Diagnostics) types.List {
+	if len(values) == 0 {
+		return types.ListNull(types.StringType)
+	}
+
+	elements := make([]attr.Value, len(values))
+	for i, v := range values {
+		elements[i] = types.StringValue(v)
+	}
+
+	list, diags := types.ListValue(types.StringType, elements)
+	diagnostics.Append(diags...)
+	return list
 }
