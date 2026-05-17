@@ -2,6 +2,11 @@ module terraform-provider-phare
 
 go 1.25.5
 
+tool (
+	github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
+	honnef.co/go/tools/cmd/staticcheck
+)
+
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.24.0
 	github.com/hashicorp/terraform-plugin-framework v1.18.0

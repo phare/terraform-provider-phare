@@ -6,30 +6,32 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   unit:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
           cache: true
 
+      - run: go mod verify
       - run: go mod tidy
       - run: go generate ./...
       - name: Check for uncommitted changes in docs/ after generate
         run: git diff --exit-code docs/
       - run: go fmt ./...
       - run: go vet ./...
-      - run: go run honnef.co/go/tools/cmd/staticcheck ./...
+      - run: go tool staticcheck ./...
 
       - name: Run unit tests
         run: go test -v -race ./...
@@ -39,14 +41,19 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
 
+      - name: Run go mod verify
+        run: go mod verify
+        
       - name: Run acceptance tests
         env:
           TF_ACC: "1"
