@@ -34,32 +34,34 @@ resource "phare_uptime_status_page" "main" {
 
   theme {
     rounded      = true
-    border_width = 2
+    border_width = 1
 
     light {
+      empty                = "#e5e5e5"
       operational          = "#16a34a"
       degraded_performance = "#fbbf24"
       partial_outage       = "#f59e0b"
       major_outage         = "#ef4444"
       maintenance          = "#6366f1"
-      empty                = "#d3d3d3"
       background           = "#ffffff"
+      border               = "#e5e5e5"
       foreground           = "#000000"
       foreground_muted     = "#737373"
-      background_card      = "#fafafa"
+      background_card      = "#ffffff"
     }
 
     dark {
+      empty                = "#3f3f46"
       operational          = "#16a34a"
       degraded_performance = "#fbbf24"
       partial_outage       = "#f59e0b"
       major_outage         = "#ef4444"
       maintenance          = "#6366f1"
-      empty                = "#d3d3d3"
-      background           = "#111111"
-      foreground           = "#ffffff"
-      foreground_muted     = "#959595"
-      background_card      = "#1a1a1a"
+      background           = "#18181b"
+      border               = "#3f3f46"
+      foreground           = "#f5f5f5"
+      foreground_muted     = "#a3a3a3"
+      background_card      = "#18181b"
     }
   }
 
