@@ -158,99 +158,99 @@ type StatusPageFileUpload struct {
 func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *StatusPageRequest, uploads []StatusPageFileUpload, removals []string) (*StatusPageResponse, error) {
 	path := fmt.Sprintf("/uptime/status-pages/%d", id)
 
-	// Build fields map with all status page data
-	fields := make(map[string]string)
+	// Build fields slice with all status page data
+	var fields []FormField
 
 	// Add required fields
-	fields["name"] = req.Name
-	fields["title"] = req.Title
-	fields["description"] = req.Description
-	fields["website_url"] = req.WebsiteURL
+	fields = append(fields, FormField{"name", req.Name})
+	fields = append(fields, FormField{"title", req.Title})
+	fields = append(fields, FormField{"description", req.Description})
+	fields = append(fields, FormField{"website_url", req.WebsiteURL})
 	if req.SearchEngineIndexed {
-		fields["search_engine_indexed"] = "1"
+		fields = append(fields, FormField{"search_engine_indexed", "1"})
 	} else {
-		fields["search_engine_indexed"] = "0"
+		fields = append(fields, FormField{"search_engine_indexed", "0"})
 	}
 
 	// Add optional fields
 	if req.Subdomain != nil {
-		fields["subdomain"] = *req.Subdomain
+		fields = append(fields, FormField{"subdomain", *req.Subdomain})
 	}
 	if req.Domain != nil {
-		fields["domain"] = *req.Domain
+		fields = append(fields, FormField{"domain", *req.Domain})
 	}
 	if req.ColorScheme != nil {
-		fields["color_scheme"] = *req.ColorScheme
+		fields = append(fields, FormField{"color_scheme", *req.ColorScheme})
 	}
 	if req.Timeframe != nil {
-		fields["timeframe"] = fmt.Sprintf("%d", *req.Timeframe)
+		fields = append(fields, FormField{"timeframe", fmt.Sprintf("%d", *req.Timeframe)})
 	}
 
 	// Add components as indexed fields
 	for i, comp := range req.Components {
-		fields[fmt.Sprintf("components[%d][componentable_type]", i)] = comp.ComponentableType
-		fields[fmt.Sprintf("components[%d][componentable_id]", i)] = fmt.Sprintf("%d", comp.ComponentableID)
+		fields = append(fields, FormField{fmt.Sprintf("components[%d][componentable_type]", i), comp.ComponentableType})
+		fields = append(fields, FormField{fmt.Sprintf("components[%d][componentable_id]", i), fmt.Sprintf("%d", comp.ComponentableID)})
 	}
 
 	// Add subscription channels
 	for i, channel := range req.SubscriptionChannels {
-		fields[fmt.Sprintf("subscription_channels[%d]", i)] = channel
+		fields = append(fields, FormField{fmt.Sprintf("subscription_channels[%d]", i), channel})
 	}
 
 	// Add access IPs
 	for i, ip := range req.AccessIPs {
-		fields[fmt.Sprintf("access_ips[%d]", i)] = ip
+		fields = append(fields, FormField{fmt.Sprintf("access_ips[%d]", i), ip})
 	}
 
 	// Add access token and password if provided
 	if req.AccessToken != nil {
-		fields["access_token"] = *req.AccessToken
+		fields = append(fields, FormField{"access_token", *req.AccessToken})
 	}
 	if req.AccessPassword != nil {
-		fields["access_password"] = *req.AccessPassword
+		fields = append(fields, FormField{"access_password", *req.AccessPassword})
 	}
 
 	// Add theme fields if present
 	if req.Theme != nil {
 		if req.Theme.Rounded != nil {
 			if *req.Theme.Rounded {
-				fields["theme[rounded]"] = "1"
+				fields = append(fields, FormField{"theme[rounded]", "1"})
 			} else {
-				fields["theme[rounded]"] = "0"
+				fields = append(fields, FormField{"theme[rounded]", "0"})
 			}
 		}
 		if req.Theme.BorderWidth != nil {
-			fields["theme[border_width]"] = fmt.Sprintf("%d", *req.Theme.BorderWidth)
+			fields = append(fields, FormField{"theme[border_width]", fmt.Sprintf("%d", *req.Theme.BorderWidth)})
 		}
 		if req.Theme.Light != nil {
-			fields["theme[light][operational]"] = req.Theme.Light.Operational
-			fields["theme[light][degraded_performance]"] = req.Theme.Light.DegradedPerformance
-			fields["theme[light][partial_outage]"] = req.Theme.Light.PartialOutage
-			fields["theme[light][major_outage]"] = req.Theme.Light.MajorOutage
-			fields["theme[light][maintenance]"] = req.Theme.Light.Maintenance
-			fields["theme[light][empty]"] = req.Theme.Light.Empty
-			fields["theme[light][background]"] = req.Theme.Light.Background
-			fields["theme[light][foreground]"] = req.Theme.Light.Foreground
-			fields["theme[light][foreground_muted]"] = req.Theme.Light.ForegroundMuted
-			fields["theme[light][background_card]"] = req.Theme.Light.BackgroundCard
+			fields = append(fields, FormField{"theme[light][operational]", req.Theme.Light.Operational})
+			fields = append(fields, FormField{"theme[light][degraded_performance]", req.Theme.Light.DegradedPerformance})
+			fields = append(fields, FormField{"theme[light][partial_outage]", req.Theme.Light.PartialOutage})
+			fields = append(fields, FormField{"theme[light][major_outage]", req.Theme.Light.MajorOutage})
+			fields = append(fields, FormField{"theme[light][maintenance]", req.Theme.Light.Maintenance})
+			fields = append(fields, FormField{"theme[light][empty]", req.Theme.Light.Empty})
+			fields = append(fields, FormField{"theme[light][background]", req.Theme.Light.Background})
+			fields = append(fields, FormField{"theme[light][foreground]", req.Theme.Light.Foreground})
+			fields = append(fields, FormField{"theme[light][foreground_muted]", req.Theme.Light.ForegroundMuted})
+			fields = append(fields, FormField{"theme[light][background_card]", req.Theme.Light.BackgroundCard})
 		}
 		if req.Theme.Dark != nil {
-			fields["theme[dark][operational]"] = req.Theme.Dark.Operational
-			fields["theme[dark][degraded_performance]"] = req.Theme.Dark.DegradedPerformance
-			fields["theme[dark][partial_outage]"] = req.Theme.Dark.PartialOutage
-			fields["theme[dark][major_outage]"] = req.Theme.Dark.MajorOutage
-			fields["theme[dark][maintenance]"] = req.Theme.Dark.Maintenance
-			fields["theme[dark][empty]"] = req.Theme.Dark.Empty
-			fields["theme[dark][background]"] = req.Theme.Dark.Background
-			fields["theme[dark][foreground]"] = req.Theme.Dark.Foreground
-			fields["theme[dark][foreground_muted]"] = req.Theme.Dark.ForegroundMuted
-			fields["theme[dark][background_card]"] = req.Theme.Dark.BackgroundCard
+			fields = append(fields, FormField{"theme[dark][operational]", req.Theme.Dark.Operational})
+			fields = append(fields, FormField{"theme[dark][degraded_performance]", req.Theme.Dark.DegradedPerformance})
+			fields = append(fields, FormField{"theme[dark][partial_outage]", req.Theme.Dark.PartialOutage})
+			fields = append(fields, FormField{"theme[dark][major_outage]", req.Theme.Dark.MajorOutage})
+			fields = append(fields, FormField{"theme[dark][maintenance]", req.Theme.Dark.Maintenance})
+			fields = append(fields, FormField{"theme[dark][empty]", req.Theme.Dark.Empty})
+			fields = append(fields, FormField{"theme[dark][background]", req.Theme.Dark.Background})
+			fields = append(fields, FormField{"theme[dark][foreground]", req.Theme.Dark.Foreground})
+			fields = append(fields, FormField{"theme[dark][foreground_muted]", req.Theme.Dark.ForegroundMuted})
+			fields = append(fields, FormField{"theme[dark][background_card]", req.Theme.Dark.BackgroundCard})
 		}
 	}
 
 	// Add file removals (send "false" to remove)
 	for _, fieldName := range removals {
-		fields[fieldName] = "false"
+		fields = append(fields, FormField{fieldName, "false"})
 	}
 
 	// Build files slice for uploads

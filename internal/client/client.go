@@ -338,6 +338,11 @@ func (c *Client) WithProjectScope(projectID, projectSlug string) (*Client, error
 	)
 }
 
+type FormField struct {
+	Key   string
+	Value string
+}
+
 // FileUpload represents a file to be uploaded in a multipart request.
 type FileUpload struct {
 	FieldName string
@@ -352,12 +357,12 @@ type FileUpload struct {
 //   - ctx: Context for cancellation
 //   - method: HTTP method (typically POST)
 //   - path: API path (e.g., "/uptime/status-pages/123")
-//   - fields: Form fields to include (field name -> value)
+//   - fields: Form fields to include
 //   - files: Files to upload
 //   - result: Pointer to store the response (will be unmarshaled from JSON), can be nil
 //
 // Returns an APIError if the request fails.
-func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fields map[string]string, files []FileUpload, result interface{}) error {
+func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fields []FormField, files []FileUpload, result interface{}) error {
 	url := c.baseURL + path
 
 	var lastErr error
@@ -378,13 +383,13 @@ func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fi
 		writer := multipart.NewWriter(&body)
 
 		// Add form fields
-		for fieldName, fieldValue := range fields {
-			if err := writer.WriteField(fieldName, fieldValue); err != nil {
+		for _, field := range fields {
+			if err := writer.WriteField(field.Key, field.Value); err != nil {
 				tflog.Error(ctx, "Failed to write multipart field", map[string]interface{}{
-					"field": fieldName,
+					"field": field.Key,
 					"error": err.Error(),
 				})
-				return fmt.Errorf("failed to write multipart field %s: %w", fieldName, err)
+				return fmt.Errorf("failed to write multipart field %s: %w", field.Key, err)
 			}
 		}
 
