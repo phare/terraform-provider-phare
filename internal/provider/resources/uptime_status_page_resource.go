@@ -809,11 +809,11 @@ func extractThemeFromPlan(ctx context.Context, planTheme types.Object, diagnosti
 	}
 
 	// Extract rounded and border width
-	if !themeStruct.Rounded.IsNull() {
+	if !themeStruct.Rounded.IsNull() && !themeStruct.Rounded.IsUnknown() {
 		rounded := themeStruct.Rounded.ValueBool()
 		theme.Rounded = &rounded
 	}
-	if !themeStruct.BorderWidth.IsNull() {
+	if !themeStruct.BorderWidth.IsNull() && !themeStruct.BorderWidth.IsUnknown() {
 		borderWidth := themeStruct.BorderWidth.ValueInt64()
 		theme.BorderWidth = &borderWidth
 	}
@@ -1037,6 +1037,11 @@ func (r *uptimeStatusPageResource) uploadStatusPageFiles(
 						"Invalid File",
 						fmt.Sprintf("Error validating %s file: %s", field.fieldName, err.Error()),
 					)
+					for _, u := range uploads {
+						if closer, ok := u.Content.(interface{ Close() error }); ok {
+							closer.Close()
+						}
+					}
 					return nil
 				}
 
@@ -1046,6 +1051,11 @@ func (r *uptimeStatusPageResource) uploadStatusPageFiles(
 						"File Read Error",
 						fmt.Sprintf("Error opening %s file for upload: %s", field.fieldName, err.Error()),
 					)
+					for _, u := range uploads {
+						if closer, ok := u.Content.(interface{ Close() error }); ok {
+							closer.Close()
+						}
+					}
 					return nil
 				}
 
@@ -1138,7 +1148,7 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 	apiReq.Timeframe = &timeframe
 
 	// Add optional fields
-	if !plan.Domain.IsNull() {
+	if !plan.Domain.IsNull() && !plan.Domain.IsUnknown() {
 		domain := plan.Domain.ValueString()
 		apiReq.Domain = &domain
 	}
@@ -1177,7 +1187,11 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 	plan.Id = types.Int64Value(apiResp.ID)
 	plan.ProjectId = types.Int64Value(apiResp.ProjectID)
 	plan.Name = types.StringValue(apiResp.Name)
-	plan.Subdomain = types.StringValue(*apiResp.Subdomain)
+	if apiResp.Subdomain != nil {
+		plan.Subdomain = types.StringValue(*apiResp.Subdomain)
+	} else {
+		plan.Subdomain = types.StringNull()
+	}
 	plan.Title = types.StringValue(apiResp.Title)
 	plan.Description = types.StringValue(apiResp.Description)
 	plan.SearchEngineIndexed = types.BoolValue(apiResp.SearchEngineIndexed)
@@ -1189,7 +1203,6 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 		plan.Domain = types.StringNull()
 	}
 
-	plan.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	plan.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	plan.UpdatedAt = types.StringValue(apiResp.UpdatedAt)
 
@@ -1278,7 +1291,11 @@ func (r *uptimeStatusPageResource) Read(ctx context.Context, req resource.ReadRe
 	// Update state from API response
 	state.ProjectId = types.Int64Value(apiResp.ProjectID)
 	state.Name = types.StringValue(apiResp.Name)
-	state.Subdomain = types.StringValue(*apiResp.Subdomain)
+	if apiResp.Subdomain != nil {
+		state.Subdomain = types.StringValue(*apiResp.Subdomain)
+	} else {
+		state.Subdomain = types.StringNull()
+	}
 	state.Title = types.StringValue(apiResp.Title)
 	state.Description = types.StringValue(apiResp.Description)
 	state.SearchEngineIndexed = types.BoolValue(apiResp.SearchEngineIndexed)
@@ -1398,7 +1415,7 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 	apiReq.Timeframe = &timeframe
 
 	// Add optional fields
-	if !plan.Domain.IsNull() {
+	if !plan.Domain.IsNull() && !plan.Domain.IsUnknown() {
 		domain := plan.Domain.ValueString()
 		apiReq.Domain = &domain
 	}
@@ -1437,7 +1454,11 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 	plan.Id = types.Int64Value(apiResp.ID)
 	plan.ProjectId = types.Int64Value(apiResp.ProjectID)
 	plan.Name = types.StringValue(apiResp.Name)
-	plan.Subdomain = types.StringValue(*apiResp.Subdomain)
+	if apiResp.Subdomain != nil {
+		plan.Subdomain = types.StringValue(*apiResp.Subdomain)
+	} else {
+		plan.Subdomain = types.StringNull()
+	}
 	plan.Title = types.StringValue(apiResp.Title)
 	plan.Description = types.StringValue(apiResp.Description)
 	plan.SearchEngineIndexed = types.BoolValue(apiResp.SearchEngineIndexed)

@@ -340,8 +340,8 @@ resource "phare_uptime_status_page" "test_files" {
   timeframe             = 30
   color_scheme          = "all"
 
-  logo_light = "` + filepath.Join(testDataDir, "logo_light.png") + `"
-  logo_dark  = "` + filepath.Join(testDataDir, "logo_dark.png") + `"
+  logo_light = "` + filepath.ToSlash(filepath.Join(testDataDir, "logo_light.png")) + `"
+  logo_dark  = "` + filepath.ToSlash(filepath.Join(testDataDir, "logo_dark.png")) + `"
 
   components = [
     {
@@ -354,9 +354,11 @@ resource "phare_uptime_status_page" "test_files" {
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "name", "Status page with files"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "logo_light", filepath.Join(testDataDir, "logo_light.png")),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "logo_dark", filepath.Join(testDataDir, "logo_dark.png")),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "logo_light", filepath.ToSlash(filepath.Join(testDataDir, "logo_light.png"))),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "logo_dark", filepath.ToSlash(filepath.Join(testDataDir, "logo_dark.png"))),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test_files", "id"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "components.0.componentable_type", "uptime/monitor"),
+					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test_files", "components.0.componentable_id"),
 				),
 			},
 			// Step 2: Add favicon files
@@ -402,10 +404,10 @@ resource "phare_uptime_status_page" "test_files" {
   timeframe             = 30
   color_scheme          = "all"
 
-  logo_light    = "` + filepath.Join(testDataDir, "logo_light.png") + `"
-  logo_dark     = "` + filepath.Join(testDataDir, "logo_dark.png") + `"
-  favicon_light = "` + filepath.Join(testDataDir, "favicon_light.png") + `"
-  favicon_dark  = "` + filepath.Join(testDataDir, "favicon.svg") + `"
+  logo_light    = "` + filepath.ToSlash(filepath.Join(testDataDir, "logo_light.png")) + `"
+  logo_dark     = "` + filepath.ToSlash(filepath.Join(testDataDir, "logo_dark.png")) + `"
+  favicon_light = "` + filepath.ToSlash(filepath.Join(testDataDir, "favicon_light.png")) + `"
+  favicon_dark  = "` + filepath.ToSlash(filepath.Join(testDataDir, "favicon.svg")) + `"
 
   components = [
     {
@@ -418,8 +420,10 @@ resource "phare_uptime_status_page" "test_files" {
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "title", "Status page with logo and favicon"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_light", filepath.Join(testDataDir, "favicon_light.png")),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_dark", filepath.Join(testDataDir, "favicon.svg")),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_light", filepath.ToSlash(filepath.Join(testDataDir, "favicon_light.png"))),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_dark", filepath.ToSlash(filepath.Join(testDataDir, "favicon.svg"))),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "components.0.componentable_type", "uptime/monitor"),
+					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test_files", "components.0.componentable_id"),
 				),
 			},
 			// Step 3: Remove logos (keep favicons)
@@ -465,8 +469,8 @@ resource "phare_uptime_status_page" "test_files" {
   timeframe             = 30
   color_scheme          = "all"
 
-  favicon_light = "` + filepath.Join(testDataDir, "favicon_light.png") + `"
-  favicon_dark  = "` + filepath.Join(testDataDir, "favicon.svg") + `"
+  favicon_light = "` + filepath.ToSlash(filepath.Join(testDataDir, "favicon_light.png")) + `"
+  favicon_dark  = "` + filepath.ToSlash(filepath.Join(testDataDir, "favicon.svg")) + `"
 
   components = [
     {
@@ -481,7 +485,9 @@ resource "phare_uptime_status_page" "test_files" {
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "title", "Status page with favicon only"),
 					testingresource.TestCheckNoResourceAttr("phare_uptime_status_page.test_files", "logo_light"),
 					testingresource.TestCheckNoResourceAttr("phare_uptime_status_page.test_files", "logo_dark"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_light", filepath.Join(testDataDir, "favicon_light.png")),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "favicon_light", filepath.ToSlash(filepath.Join(testDataDir, "favicon_light.png"))),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test_files", "components.0.componentable_type", "uptime/monitor"),
+					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test_files", "components.0.componentable_id"),
 				),
 			},
 		},
