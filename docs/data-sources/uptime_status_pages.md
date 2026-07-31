@@ -36,7 +36,7 @@ Read-Only:
 - `access_password_enabled` (Boolean) Whether a password is currently set on the status page
 - `access_token_enabled` (Boolean) Whether an access token is currently set on the status page
 - `color_scheme` (String) Available color schemes for the status page (all, dark, or light)
-- `components` (Attributes List) List of components (monitors) shown on the status page (see [below for nested schema](#nestedatt--status_pages--components))
+- `components` (Attributes List) List of components shown on the status page (see [below for nested schema](#nestedatt--status_pages--components))
 - `created_at` (String) Creation timestamp
 - `description` (String) Status page HTML description
 - `domain` (String) Custom domain for the status page
@@ -56,8 +56,20 @@ Read-Only:
 
 Read-Only:
 
-- `componentable_id` (Number) ID of the component
-- `componentable_type` (String) Type of component
+- `componentable_id` (Number) ID of the component entity (for uptime/monitor)
+- `componentable_type` (String) Type of the component entity (uptime/monitor or uptime/group)
+- `components` (Attributes List) List of monitor components shown inside the group (for uptime/group) (see [below for nested schema](#nestedatt--status_pages--components--components))
+- `is_expanded` (Boolean) Whether the component group is expanded by default (for uptime/group)
+- `name` (String) Name of the component group (for uptime/group)
+
+<a id="nestedatt--status_pages--components--components"></a>
+### Nested Schema for `status_pages.components.components`
+
+Read-Only:
+
+- `componentable_id` (Number) ID of the component entity inside the group
+- `componentable_type` (String) Type of component entity (uptime/monitor)
+
 
 
 <a id="nestedatt--status_pages--theme"></a>

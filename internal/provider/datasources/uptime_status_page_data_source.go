@@ -179,23 +179,72 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 	}
 
 	// Map components
-	if len(page.Components) > 0 {
-		componentType := types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"componentable_type": types.StringType,
-				"componentable_id":   types.Int64Type,
-			},
-		}
+	nestedComponentType := types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"componentable_type": types.StringType,
+			"componentable_id":   types.Int64Type,
+		},
+	}
 
+	componentType := types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"componentable_type": types.StringType,
+			"componentable_id":   types.Int64Type,
+			"name":               types.StringType,
+			"is_expanded":        types.BoolType,
+			"components":         types.ListType{ElemType: nestedComponentType},
+		},
+	}
+
+	if len(page.Components) > 0 {
 		componentElements := make([]attr.Value, len(page.Components))
 		for i, comp := range page.Components {
-			compObj, diags := types.ObjectValue(
-				componentType.AttrTypes,
-				map[string]attr.Value{
-					"componentable_type": types.StringValue(comp.ComponentableType),
-					"componentable_id":   types.Int64Value(comp.ComponentableID),
-				},
-			)
+			compAttrs := map[string]attr.Value{
+				"componentable_type": types.StringValue(comp.ComponentableType),
+				"componentable_id":   types.Int64Null(),
+				"name":               types.StringNull(),
+				"is_expanded":        types.BoolNull(),
+				"components":         types.ListNull(nestedComponentType),
+			}
+
+			if comp.ComponentableID != nil {
+				compAttrs["componentable_id"] = types.Int64Value(*comp.ComponentableID)
+			}
+			if comp.Name != nil {
+				compAttrs["name"] = types.StringValue(*comp.Name)
+			}
+			if comp.IsExpanded != nil {
+				compAttrs["is_expanded"] = types.BoolValue(*comp.IsExpanded)
+			}
+			if len(comp.Components) > 0 {
+				nestedElements := make([]attr.Value, len(comp.Components))
+				for j, childComp := range comp.Components {
+					nestedID := types.Int64Null()
+					if childComp.ComponentableID != nil {
+						nestedID = types.Int64Value(*childComp.ComponentableID)
+					}
+					nestedObj, diags := types.ObjectValue(
+						nestedComponentType.AttrTypes,
+						map[string]attr.Value{
+							"componentable_type": types.StringValue(childComp.ComponentableType),
+							"componentable_id":   nestedID,
+						},
+					)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return statusPageModel{}
+					}
+					nestedElements[j] = nestedObj
+				}
+				nestedList, diags := types.ListValue(nestedComponentType, nestedElements)
+				resp.Diagnostics.Append(diags...)
+				if resp.Diagnostics.HasError() {
+					return statusPageModel{}
+				}
+				compAttrs["components"] = nestedList
+			}
+
+			compObj, diags := types.ObjectValue(componentType.AttrTypes, compAttrs)
 			resp.Diagnostics.Append(diags...)
 			if resp.Diagnostics.HasError() {
 				return statusPageModel{}
@@ -210,12 +259,7 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 		}
 		model.Components = componentsList
 	} else {
-		model.Components = types.ListNull(types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"componentable_type": types.StringType,
-				"componentable_id":   types.Int64Type,
-			},
-		})
+		model.Components = types.ListNull(componentType)
 	}
 
 	// Map access IPs
@@ -385,16 +429,40 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 		},
 		"components": schema.ListNestedAttribute{
 			Computed:    true,
-			Description: "List of components (monitors) shown on the status page",
+			Description: "List of components shown on the status page",
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"componentable_type": schema.StringAttribute{
 						Computed:    true,
-						Description: "Type of component",
+						Description: "Type of the component entity (uptime/monitor or uptime/group)",
 					},
 					"componentable_id": schema.Int64Attribute{
 						Computed:    true,
-						Description: "ID of the component",
+						Description: "ID of the component entity (for uptime/monitor)",
+					},
+					"name": schema.StringAttribute{
+						Computed:    true,
+						Description: "Name of the component group (for uptime/group)",
+					},
+					"is_expanded": schema.BoolAttribute{
+						Computed:    true,
+						Description: "Whether the component group is expanded by default (for uptime/group)",
+					},
+					"components": schema.ListNestedAttribute{
+						Computed:    true,
+						Description: "List of monitor components shown inside the group (for uptime/group)",
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"componentable_type": schema.StringAttribute{
+									Computed:    true,
+									Description: "Type of component entity (uptime/monitor)",
+								},
+								"componentable_id": schema.Int64Attribute{
+									Computed:    true,
+									Description: "ID of the component entity inside the group",
+								},
+							},
+						},
 					},
 				},
 			},

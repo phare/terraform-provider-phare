@@ -49,8 +49,11 @@ type ThemeColors struct {
 
 // StatusPageComponent represents a component on a status page.
 type StatusPageComponent struct {
-	ComponentableType string `json:"componentable_type"`
-	ComponentableID   int64  `json:"componentable_id"`
+	ComponentableType string                `json:"componentable_type"`
+	ComponentableID   *int64                `json:"componentable_id,omitempty"`
+	Name              *string               `json:"name,omitempty"`
+	IsExpanded        *bool                 `json:"is_expanded,omitempty"`
+	Components        []StatusPageComponent `json:"components,omitempty"`
 }
 
 // StatusPageResponse represents a status page response from the API.
@@ -189,7 +192,25 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 	// Add components as indexed fields
 	for i, comp := range req.Components {
 		fields = append(fields, FormField{fmt.Sprintf("components[%d][componentable_type]", i), comp.ComponentableType})
-		fields = append(fields, FormField{fmt.Sprintf("components[%d][componentable_id]", i), fmt.Sprintf("%d", comp.ComponentableID)})
+		if comp.ComponentableID != nil {
+			fields = append(fields, FormField{fmt.Sprintf("components[%d][componentable_id]", i), fmt.Sprintf("%d", *comp.ComponentableID)})
+		}
+		if comp.Name != nil {
+			fields = append(fields, FormField{fmt.Sprintf("components[%d][name]", i), *comp.Name})
+		}
+		if comp.IsExpanded != nil {
+			if *comp.IsExpanded {
+				fields = append(fields, FormField{fmt.Sprintf("components[%d][is_expanded]", i), "1"})
+			} else {
+				fields = append(fields, FormField{fmt.Sprintf("components[%d][is_expanded]", i), "0"})
+			}
+		}
+		for j, childComp := range comp.Components {
+			fields = append(fields, FormField{fmt.Sprintf("components[%d][components][%d][componentable_type]", i, j), childComp.ComponentableType})
+			if childComp.ComponentableID != nil {
+				fields = append(fields, FormField{fmt.Sprintf("components[%d][components][%d][componentable_id]", i, j), fmt.Sprintf("%d", *childComp.ComponentableID)})
+			}
+		}
 	}
 
 	// Add subscription channels
