@@ -46,10 +46,19 @@ type ThemeModel struct {
 	BorderWidth types.Int64  `tfsdk:"border_width"`
 }
 
+// NestedComponentModel represents a monitor component inside a group component
+type NestedComponentModel struct {
+	ComponentableType types.String `tfsdk:"componentable_type"`
+	ComponentableID   types.Int64  `tfsdk:"componentable_id"`
+}
+
 // ComponentModel represents a component in the status page
 type ComponentModel struct {
 	ComponentableType types.String `tfsdk:"componentable_type"`
 	ComponentableID   types.Int64  `tfsdk:"componentable_id"`
+	Name              types.String `tfsdk:"name"`
+	IsExpanded        types.Bool   `tfsdk:"is_expanded"`
+	Components        types.List   `tfsdk:"components"`
 }
 
 // UptimeStatusPageModel defines the data model for the status page resource
@@ -129,23 +138,59 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"componentable_id": schema.Int64Attribute{
-							Required:            true,
-							Description:         "ID of the monitor to display on the status page",
-							MarkdownDescription: "ID of the monitor to display on the status page",
+							Optional:            true,
+							Description:         "ID of the component entity to display on the status page (required for uptime/monitor)",
+							MarkdownDescription: "ID of the component entity to display on the status page (required for uptime/monitor)",
 						},
 						"componentable_type": schema.StringAttribute{
 							Required:            true,
-							Description:         "Type of component (uptime/monitor)",
-							MarkdownDescription: "Type of component (uptime/monitor)",
+							Description:         "Type of component entity (uptime/monitor or uptime/group)",
+							MarkdownDescription: "Type of component entity (uptime/monitor or uptime/group)",
 							Validators: []validator.String{
-								stringvalidator.OneOf("uptime/monitor"),
+								stringvalidator.OneOf("uptime/monitor", "uptime/group"),
 							},
+						},
+						"name": schema.StringAttribute{
+							Optional:            true,
+							Description:         "Name of the component group (required for uptime/group)",
+							MarkdownDescription: "Name of the component group (required for uptime/group)",
+							PlanModifiers: []planmodifier.String{
+								helpers.TrimString(),
+							},
+						},
+						"is_expanded": schema.BoolAttribute{
+							Optional:            true,
+							Computed:            true,
+							Description:         "Whether the group components are expanded by default (for uptime/group)",
+							MarkdownDescription: "Whether the group components are expanded by default (for uptime/group)",
+						},
+						"components": schema.ListNestedAttribute{
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"componentable_id": schema.Int64Attribute{
+										Required:            true,
+										Description:         "ID of the component entity to display inside the component group",
+										MarkdownDescription: "ID of the component entity to display inside the component group",
+									},
+									"componentable_type": schema.StringAttribute{
+										Required:            true,
+										Description:         "Type of component entity (uptime/monitor)",
+										MarkdownDescription: "Type of component entity (uptime/monitor)",
+										Validators: []validator.String{
+											stringvalidator.OneOf("uptime/monitor"),
+										},
+									},
+								},
+							},
+							Optional:            true,
+							Description:         "List of components shown inside the group (required for uptime/group)",
+							MarkdownDescription: "List of components shown inside the group (required for uptime/group)",
 						},
 					},
 				},
 				Required:            true,
-				Description:         "List of components (monitors) to show on the status page",
-				MarkdownDescription: "List of components (monitors) to show on the status page",
+				Description:         "List of components to show on the status page",
+				MarkdownDescription: "List of components to show on the status page",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
@@ -543,10 +588,19 @@ var ThemeModelAttrTypes = map[string]attr.Type{
 	"border_width": types.Int64Type,
 }
 
+// NestedComponentModelAttrTypes defines the attribute types for NestedComponentModel
+var NestedComponentModelAttrTypes = map[string]attr.Type{
+	"componentable_type": types.StringType,
+	"componentable_id":   types.Int64Type,
+}
+
 // ComponentModelAttrTypes defines the attribute types for ComponentModel
 var ComponentModelAttrTypes = map[string]attr.Type{
 	"componentable_type": types.StringType,
 	"componentable_id":   types.Int64Type,
+	"name":               types.StringType,
+	"is_expanded":        types.BoolType,
+	"components":         types.ListType{ElemType: types.ObjectType{AttrTypes: NestedComponentModelAttrTypes}},
 }
 
 var (
@@ -769,22 +823,120 @@ func extractThemeFromPlan(ctx context.Context, planTheme types.Object, diagnosti
 
 // Helper function to map components from API response
 func mapComponentsFromAPIResponse(ctx context.Context, apiComponents []client.StatusPageComponent, diagnostics *diag.Diagnostics) types.List {
+	componentType := types.ObjectType{AttrTypes: ComponentModelAttrTypes}
+
 	if len(apiComponents) == 0 {
-		return types.ListNull(types.ObjectType{AttrTypes: ComponentModelAttrTypes})
+		return types.ListNull(componentType)
 	}
 
 	componentModels := make([]ComponentModel, len(apiComponents))
 	for i, comp := range apiComponents {
-		componentModels[i] = ComponentModel{
+		m := ComponentModel{
 			ComponentableType: types.StringValue(comp.ComponentableType),
-			ComponentableID:   types.Int64Value(comp.ComponentableID),
+			ComponentableID:   types.Int64Null(),
+			Name:              types.StringNull(),
+			IsExpanded:        types.BoolNull(),
+			Components:        types.ListNull(types.ObjectType{AttrTypes: NestedComponentModelAttrTypes}),
 		}
+
+		if comp.ComponentableID != nil {
+			m.ComponentableID = types.Int64Value(*comp.ComponentableID)
+		}
+
+		if comp.Name != nil {
+			m.Name = types.StringValue(*comp.Name)
+		}
+
+		if comp.IsExpanded != nil {
+			m.IsExpanded = types.BoolValue(*comp.IsExpanded)
+		}
+
+		if len(comp.Components) > 0 {
+			nestedModels := make([]NestedComponentModel, len(comp.Components))
+			for j, childComp := range comp.Components {
+				nestedID := types.Int64Null()
+				if childComp.ComponentableID != nil {
+					nestedID = types.Int64Value(*childComp.ComponentableID)
+				}
+				nestedModels[j] = NestedComponentModel{
+					ComponentableType: types.StringValue(childComp.ComponentableType),
+					ComponentableID:   nestedID,
+				}
+			}
+			nestedList, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: NestedComponentModelAttrTypes}, nestedModels)
+			diagnostics.Append(diags...)
+			if diagnostics.HasError() {
+				return types.ListNull(componentType)
+			}
+			m.Components = nestedList
+		}
+
+		componentModels[i] = m
 	}
 
-	componentType := types.ObjectType{AttrTypes: ComponentModelAttrTypes}
 	componentsList, diagsObj := types.ListValueFrom(ctx, componentType, componentModels)
 	diagnostics.Append(diagsObj...)
 	return componentsList
+}
+
+// Helper function to map components from plan/state into client components
+func mapComponentsFromPlan(ctx context.Context, componentsList types.List, diagnostics *diag.Diagnostics) []client.StatusPageComponent {
+	if componentsList.IsNull() || componentsList.IsUnknown() {
+		return nil
+	}
+
+	var planComponents []ComponentModel
+	diagnostics.Append(componentsList.ElementsAs(ctx, &planComponents, false)...)
+	if diagnostics.HasError() {
+		return nil
+	}
+
+	components := make([]client.StatusPageComponent, len(planComponents))
+	for i, comp := range planComponents {
+		clientComp := client.StatusPageComponent{
+			ComponentableType: comp.ComponentableType.ValueString(),
+		}
+
+		if !comp.ComponentableID.IsNull() && !comp.ComponentableID.IsUnknown() {
+			id := comp.ComponentableID.ValueInt64()
+			clientComp.ComponentableID = &id
+		}
+
+		if !comp.Name.IsNull() && !comp.Name.IsUnknown() {
+			name := comp.Name.ValueString()
+			clientComp.Name = &name
+		}
+
+		if !comp.IsExpanded.IsNull() && !comp.IsExpanded.IsUnknown() {
+			isExpanded := comp.IsExpanded.ValueBool()
+			clientComp.IsExpanded = &isExpanded
+		}
+
+		if !comp.Components.IsNull() && !comp.Components.IsUnknown() {
+			var nestedModels []NestedComponentModel
+			diagnostics.Append(comp.Components.ElementsAs(ctx, &nestedModels, false)...)
+			if diagnostics.HasError() {
+				return nil
+			}
+
+			clientComp.Components = make([]client.StatusPageComponent, len(nestedModels))
+			for j, nested := range nestedModels {
+				var childID *int64
+				if !nested.ComponentableID.IsNull() && !nested.ComponentableID.IsUnknown() {
+					id := nested.ComponentableID.ValueInt64()
+					childID = &id
+				}
+				clientComp.Components[j] = client.StatusPageComponent{
+					ComponentableType: nested.ComponentableType.ValueString(),
+					ComponentableID:   childID,
+				}
+			}
+		}
+
+		components[i] = clientComp
+	}
+
+	return components
 }
 
 // Helper function to map subscription channels from API response
@@ -945,21 +1097,9 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	// Build components list from plan
-	var components []client.StatusPageComponent
-	if !plan.Components.IsNull() && !plan.Components.IsUnknown() {
-		var planComponents []ComponentModel
-		resp.Diagnostics.Append(plan.Components.ElementsAs(ctx, &planComponents, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		components = make([]client.StatusPageComponent, len(planComponents))
-		for i, comp := range planComponents {
-			components[i] = client.StatusPageComponent{
-				ComponentableType: comp.ComponentableType.ValueString(),
-				ComponentableID:   comp.ComponentableID.ValueInt64(),
-			}
-		}
+	components := mapComponentsFromPlan(ctx, plan.Components, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Extract and convert theme from plan
@@ -1217,21 +1357,9 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	// Build components list from plan
-	var components []client.StatusPageComponent
-	if !plan.Components.IsNull() && !plan.Components.IsUnknown() {
-		var planComponents []ComponentModel
-		resp.Diagnostics.Append(plan.Components.ElementsAs(ctx, &planComponents, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		components = make([]client.StatusPageComponent, len(planComponents))
-		for i, comp := range planComponents {
-			components[i] = client.StatusPageComponent{
-				ComponentableType: comp.ComponentableType.ValueString(),
-				ComponentableID:   comp.ComponentableID.ValueInt64(),
-			}
-		}
+	components := mapComponentsFromPlan(ctx, plan.Components, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Extract and convert theme from plan

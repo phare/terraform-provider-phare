@@ -2,6 +2,10 @@ data "phare_uptime_monitor" "web" {
   id = 123
 }
 
+data "phare_uptime_monitor" "api" {
+  id = 124
+}
+
 resource "phare_uptime_status_page" "main" {
   name                  = "Status page"
   title                 = "Example status page"
@@ -53,7 +57,18 @@ resource "phare_uptime_status_page" "main" {
   components = [
     {
       componentable_type = "uptime/monitor"
-      componentable_id   = phare_uptime_monitor.web.id
+      componentable_id   = data.phare_uptime_monitor.web.id
+    },
+    {
+      componentable_type = "uptime/group"
+      name               = "Web Services"
+      is_expanded        = true
+      components = [
+        {
+          componentable_type = "uptime/monitor"
+          componentable_id   = data.phare_uptime_monitor.api.id
+        }
+      ]
     }
   ]
 

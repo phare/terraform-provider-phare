@@ -17,6 +17,10 @@ data "phare_uptime_monitor" "web" {
   id = 123
 }
 
+data "phare_uptime_monitor" "api" {
+  id = 124
+}
+
 resource "phare_uptime_status_page" "main" {
   name                  = "Status page"
   title                 = "Example status page"
@@ -68,7 +72,18 @@ resource "phare_uptime_status_page" "main" {
   components = [
     {
       componentable_type = "uptime/monitor"
-      componentable_id   = phare_uptime_monitor.web.id
+      componentable_id   = data.phare_uptime_monitor.web.id
+    },
+    {
+      componentable_type = "uptime/group"
+      name               = "Web Services"
+      is_expanded        = true
+      components = [
+        {
+          componentable_type = "uptime/monitor"
+          componentable_id   = data.phare_uptime_monitor.api.id
+        }
+      ]
     }
   ]
 
@@ -84,7 +99,7 @@ resource "phare_uptime_status_page" "main" {
 
 ### Required
 
-- `components` (Attributes List) List of components (monitors) to show on the status page (see [below for nested schema](#nestedatt--components))
+- `components` (Attributes List) List of components to show on the status page (see [below for nested schema](#nestedatt--components))
 - `description` (String) Status page description
 - `name` (String) Status page name
 - `search_engine_indexed` (Boolean) Whether search engines can index the page
@@ -122,8 +137,23 @@ resource "phare_uptime_status_page" "main" {
 
 Required:
 
-- `componentable_id` (Number) ID of the monitor to display on the status page
-- `componentable_type` (String) Type of component (uptime/monitor)
+- `componentable_type` (String) Type of component entity (uptime/monitor or uptime/group)
+
+Optional:
+
+- `componentable_id` (Number) ID of the component entity to display on the status page (required for uptime/monitor)
+- `components` (Attributes List) List of components shown inside the group (required for uptime/group) (see [below for nested schema](#nestedatt--components--components))
+- `is_expanded` (Boolean) Whether the group components are expanded by default (for uptime/group)
+- `name` (String) Name of the component group (required for uptime/group)
+
+<a id="nestedatt--components--components"></a>
+### Nested Schema for `components.components`
+
+Required:
+
+- `componentable_id` (Number) ID of the component entity to display inside the component group
+- `componentable_type` (String) Type of component entity (uptime/monitor)
+
 
 
 <a id="nestedblock--theme"></a>

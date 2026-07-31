@@ -96,8 +96,15 @@ resource "phare_uptime_status_page" "test" {
 
   components = [
     {
-      componentable_type = "uptime/monitor"
-      componentable_id   = phare_uptime_monitor_http.test.id
+      componentable_type = "uptime/group"
+      name               = "Core Services"
+      is_expanded        = true
+      components = [
+        {
+          componentable_type = "uptime/monitor"
+          componentable_id   = phare_uptime_monitor_http.test.id
+        }
+      ]
     }
   ]
 }
@@ -118,8 +125,11 @@ resource "phare_uptime_status_page" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.light.background", "#ffffff"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.dark.operational", "#16a34a"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.dark.background", "#111111"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.componentable_type", "uptime/monitor"),
-					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "components.0.componentable_id"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.componentable_type", "uptime/group"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.name", "Core Services"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.is_expanded", "true"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.components.0.componentable_type", "uptime/monitor"),
+					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "components.0.components.0.componentable_id"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "id"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "project_id"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "created_at"),
@@ -193,8 +203,15 @@ resource "phare_uptime_status_page" "test" {
 
   components = [
     {
-      componentable_type = "uptime/monitor"
-      componentable_id   = phare_uptime_monitor_http.test.id
+      componentable_type = "uptime/group"
+      name               = "Core Services Updated"
+      is_expanded        = false
+      components = [
+        {
+          componentable_type = "uptime/monitor"
+          componentable_id   = phare_uptime_monitor_http.test.id
+        }
+      ]
     }
   ]
 }
@@ -205,6 +222,11 @@ resource "phare_uptime_status_page" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "description", "This is an updated status page description."),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "search_engine_indexed", "true"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "timeframe", "60"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.componentable_type", "uptime/group"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.name", "Core Services Updated"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.is_expanded", "false"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.components.0.componentable_type", "uptime/monitor"),
+					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "components.0.components.0.componentable_id"),
 				),
 			},
 		},
