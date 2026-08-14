@@ -176,7 +176,7 @@ type TcpRequestModel struct {
 // It embeds the base model from HTTP resource and adds TCP-specific fields
 type UptimeMonitorTcpModel struct {
 	UptimeMonitorBaseModel
-	Request TcpRequestModel `tfsdk:"request"`
+	Request *TcpRequestModel `tfsdk:"request"`
 }
 
 // UptimeMonitorTcpResourceSchema defines the schema for the TCP uptime monitor resource
@@ -295,8 +295,12 @@ func (r *uptimeMonitorTcpResource) ModifyPlan(ctx context.Context, req resource.
 		}
 	}
 }
-func tcpRequestModelToClientConfig(ctx context.Context, request TcpRequestModel) (client.MonitorRequestConfig, error) {
+func tcpRequestModelToClientConfig(ctx context.Context, request *TcpRequestModel) (client.MonitorRequestConfig, error) {
 	config := client.MonitorRequestConfig{}
+
+	if request == nil {
+		return config, nil
+	}
 
 	// Extract request attributes
 	if !request.Host.IsNull() && !request.Host.IsUnknown() {
@@ -324,8 +328,8 @@ func tcpRequestModelToClientConfig(ctx context.Context, request TcpRequestModel)
 }
 
 // Helper function to convert client request config to Terraform TCP request model
-func clientConfigToTcpRequestModel(ctx context.Context, config client.MonitorRequestConfig) (TcpRequestModel, error) {
-	request := TcpRequestModel{}
+func clientConfigToTcpRequestModel(ctx context.Context, config client.MonitorRequestConfig) (*TcpRequestModel, error) {
+	request := &TcpRequestModel{}
 
 	if config.Host != nil {
 		request.Host = types.StringValue(*config.Host)

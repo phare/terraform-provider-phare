@@ -98,8 +98,8 @@ type HttpRequestModel struct {
 // It embeds the base model and adds HTTP-specific fields
 type UptimeMonitorHttpModel struct {
 	UptimeMonitorBaseModel
-	Request           HttpRequestModel       `tfsdk:"request"`
-	SuccessAssertions SuccessAssertionsModel `tfsdk:"success_assertions"`
+	Request           *HttpRequestModel       `tfsdk:"request"`
+	SuccessAssertions *SuccessAssertionsModel `tfsdk:"success_assertions"`
 }
 
 // UptimeMonitorHttpResourceSchema defines the schema for the HTTP uptime monitor resource
@@ -362,8 +362,12 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 }
 
 // Helper function to convert Terraform HTTP request model to client request config
-func httpRequestModelToClientConfig(ctx context.Context, request HttpRequestModel) (client.MonitorRequestConfig, error) {
+func httpRequestModelToClientConfig(ctx context.Context, request *HttpRequestModel) (client.MonitorRequestConfig, error) {
 	config := client.MonitorRequestConfig{}
+
+	if request == nil {
+		return config, nil
+	}
 
 	// Extract request attributes
 	if !request.Method.IsNull() && !request.Method.IsUnknown() {
@@ -415,8 +419,8 @@ func httpRequestModelToClientConfig(ctx context.Context, request HttpRequestMode
 }
 
 // Helper function to convert client request config to Terraform HTTP request model
-func clientConfigToHttpRequestModel(ctx context.Context, config client.MonitorRequestConfig) (HttpRequestModel, error) {
-	request := HttpRequestModel{}
+func clientConfigToHttpRequestModel(ctx context.Context, config client.MonitorRequestConfig) (*HttpRequestModel, error) {
+	request := &HttpRequestModel{}
 
 	if config.Method != nil {
 		request.Method = types.StringValue(*config.Method)
@@ -475,8 +479,8 @@ func clientConfigToHttpRequestModel(ctx context.Context, config client.MonitorRe
 }
 
 // Helper to convert success assertions from client to Terraform
-func clientAssertionsToHttpTerraformModel(ctx context.Context, assertions []map[string]interface{}) (SuccessAssertionsModel, error) {
-	result := SuccessAssertionsModel{}
+func clientAssertionsToHttpTerraformModel(ctx context.Context, assertions []map[string]any) (*SuccessAssertionsModel, error) {
+	result := &SuccessAssertionsModel{}
 
 	if len(assertions) == 0 {
 		// Return empty model with null lists
@@ -613,60 +617,62 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	// Convert success assertions (required for HTTP)
-	var successAssertions []map[string]interface{}
+	var successAssertions []map[string]any
 
-	// Process status_code assertions
-	if !plan.SuccessAssertions.StatusCode.IsNull() && !plan.SuccessAssertions.StatusCode.IsUnknown() {
-		var statusCodeModels []StatusCodeAssertionModel
-		resp.Diagnostics.Append(plan.SuccessAssertions.StatusCode.ElementsAs(ctx, &statusCodeModels, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		for _, a := range statusCodeModels {
-			assertion := map[string]interface{}{
-				"type":     "status_code",
-				"operator": a.Operator.ValueString(),
-				"value":    a.Value.ValueString(),
+	if plan.SuccessAssertions != nil {
+		// Process status_code assertions
+		if !plan.SuccessAssertions.StatusCode.IsNull() && !plan.SuccessAssertions.StatusCode.IsUnknown() {
+			var statusCodeModels []StatusCodeAssertionModel
+			resp.Diagnostics.Append(plan.SuccessAssertions.StatusCode.ElementsAs(ctx, &statusCodeModels, false)...)
+			if resp.Diagnostics.HasError() {
+				return
 			}
-			successAssertions = append(successAssertions, assertion)
-		}
-	}
 
-	// Process response_header assertions
-	if !plan.SuccessAssertions.ResponseHeader.IsNull() && !plan.SuccessAssertions.ResponseHeader.IsUnknown() {
-		var responseHeaderModels []ResponseHeaderAssertionModel
-		resp.Diagnostics.Append(plan.SuccessAssertions.ResponseHeader.ElementsAs(ctx, &responseHeaderModels, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		for _, a := range responseHeaderModels {
-			assertion := map[string]interface{}{
-				"type":     "response_header",
-				"selector": a.Selector.ValueString(),
-				"operator": a.Operator.ValueString(),
-				"value":    a.Value.ValueString(),
+			for _, a := range statusCodeModels {
+				assertion := map[string]any{
+					"type":     "status_code",
+					"operator": a.Operator.ValueString(),
+					"value":    a.Value.ValueString(),
+				}
+				successAssertions = append(successAssertions, assertion)
 			}
-			successAssertions = append(successAssertions, assertion)
-		}
-	}
-
-	// Process response_body assertions
-	if !plan.SuccessAssertions.ResponseBody.IsNull() && !plan.SuccessAssertions.ResponseBody.IsUnknown() {
-		var responseBodyModels []ResponseBodyAssertionModel
-		resp.Diagnostics.Append(plan.SuccessAssertions.ResponseBody.ElementsAs(ctx, &responseBodyModels, false)...)
-		if resp.Diagnostics.HasError() {
-			return
 		}
 
-		for _, a := range responseBodyModels {
-			assertion := map[string]interface{}{
-				"type":     "response_body",
-				"operator": a.Operator.ValueString(),
-				"value":    a.Value.ValueString(),
+		// Process response_header assertions
+		if !plan.SuccessAssertions.ResponseHeader.IsNull() && !plan.SuccessAssertions.ResponseHeader.IsUnknown() {
+			var responseHeaderModels []ResponseHeaderAssertionModel
+			resp.Diagnostics.Append(plan.SuccessAssertions.ResponseHeader.ElementsAs(ctx, &responseHeaderModels, false)...)
+			if resp.Diagnostics.HasError() {
+				return
 			}
-			successAssertions = append(successAssertions, assertion)
+
+			for _, a := range responseHeaderModels {
+				assertion := map[string]any{
+					"type":     "response_header",
+					"selector": a.Selector.ValueString(),
+					"operator": a.Operator.ValueString(),
+					"value":    a.Value.ValueString(),
+				}
+				successAssertions = append(successAssertions, assertion)
+			}
+		}
+
+		// Process response_body assertions
+		if !plan.SuccessAssertions.ResponseBody.IsNull() && !plan.SuccessAssertions.ResponseBody.IsUnknown() {
+			var responseBodyModels []ResponseBodyAssertionModel
+			resp.Diagnostics.Append(plan.SuccessAssertions.ResponseBody.ElementsAs(ctx, &responseBodyModels, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+
+			for _, a := range responseBodyModels {
+				assertion := map[string]any{
+					"type":     "response_body",
+					"operator": a.Operator.ValueString(),
+					"value":    a.Value.ValueString(),
+				}
+				successAssertions = append(successAssertions, assertion)
+			}
 		}
 	}
 
@@ -877,60 +883,62 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Convert success assertions
-	var successAssertions []map[string]interface{}
+	var successAssertions []map[string]any
 
-	// Process status_code assertions
-	if !plan.SuccessAssertions.StatusCode.IsNull() && !plan.SuccessAssertions.StatusCode.IsUnknown() {
-		var statusCodeModels []StatusCodeAssertionModel
-		resp.Diagnostics.Append(plan.SuccessAssertions.StatusCode.ElementsAs(ctx, &statusCodeModels, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		for _, a := range statusCodeModels {
-			assertion := map[string]interface{}{
-				"type":     "status_code",
-				"operator": a.Operator.ValueString(),
-				"value":    a.Value.ValueString(),
+	if plan.SuccessAssertions != nil {
+		// Process status_code assertions
+		if !plan.SuccessAssertions.StatusCode.IsNull() && !plan.SuccessAssertions.StatusCode.IsUnknown() {
+			var statusCodeModels []StatusCodeAssertionModel
+			resp.Diagnostics.Append(plan.SuccessAssertions.StatusCode.ElementsAs(ctx, &statusCodeModels, false)...)
+			if resp.Diagnostics.HasError() {
+				return
 			}
-			successAssertions = append(successAssertions, assertion)
-		}
-	}
 
-	// Process response_header assertions
-	if !plan.SuccessAssertions.ResponseHeader.IsNull() && !plan.SuccessAssertions.ResponseHeader.IsUnknown() {
-		var responseHeaderModels []ResponseHeaderAssertionModel
-		resp.Diagnostics.Append(plan.SuccessAssertions.ResponseHeader.ElementsAs(ctx, &responseHeaderModels, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		for _, a := range responseHeaderModels {
-			assertion := map[string]interface{}{
-				"type":     "response_header",
-				"selector": a.Selector.ValueString(),
-				"operator": a.Operator.ValueString(),
-				"value":    a.Value.ValueString(),
+			for _, a := range statusCodeModels {
+				assertion := map[string]any{
+					"type":     "status_code",
+					"operator": a.Operator.ValueString(),
+					"value":    a.Value.ValueString(),
+				}
+				successAssertions = append(successAssertions, assertion)
 			}
-			successAssertions = append(successAssertions, assertion)
-		}
-	}
-
-	// Process response_body assertions
-	if !plan.SuccessAssertions.ResponseBody.IsNull() && !plan.SuccessAssertions.ResponseBody.IsUnknown() {
-		var responseBodyModels []ResponseBodyAssertionModel
-		resp.Diagnostics.Append(plan.SuccessAssertions.ResponseBody.ElementsAs(ctx, &responseBodyModels, false)...)
-		if resp.Diagnostics.HasError() {
-			return
 		}
 
-		for _, a := range responseBodyModels {
-			assertion := map[string]interface{}{
-				"type":     "response_body",
-				"operator": a.Operator.ValueString(),
-				"value":    a.Value.ValueString(),
+		// Process response_header assertions
+		if !plan.SuccessAssertions.ResponseHeader.IsNull() && !plan.SuccessAssertions.ResponseHeader.IsUnknown() {
+			var responseHeaderModels []ResponseHeaderAssertionModel
+			resp.Diagnostics.Append(plan.SuccessAssertions.ResponseHeader.ElementsAs(ctx, &responseHeaderModels, false)...)
+			if resp.Diagnostics.HasError() {
+				return
 			}
-			successAssertions = append(successAssertions, assertion)
+
+			for _, a := range responseHeaderModels {
+				assertion := map[string]any{
+					"type":     "response_header",
+					"selector": a.Selector.ValueString(),
+					"operator": a.Operator.ValueString(),
+					"value":    a.Value.ValueString(),
+				}
+				successAssertions = append(successAssertions, assertion)
+			}
+		}
+
+		// Process response_body assertions
+		if !plan.SuccessAssertions.ResponseBody.IsNull() && !plan.SuccessAssertions.ResponseBody.IsUnknown() {
+			var responseBodyModels []ResponseBodyAssertionModel
+			resp.Diagnostics.Append(plan.SuccessAssertions.ResponseBody.ElementsAs(ctx, &responseBodyModels, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+
+			for _, a := range responseBodyModels {
+				assertion := map[string]any{
+					"type":     "response_body",
+					"operator": a.Operator.ValueString(),
+					"value":    a.Value.ValueString(),
+				}
+				successAssertions = append(successAssertions, assertion)
+			}
 		}
 	}
 
