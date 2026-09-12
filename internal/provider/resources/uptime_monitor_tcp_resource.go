@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"terraform-provider-phare/internal/client"
 	"terraform-provider-phare/internal/provider/helpers"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -71,6 +74,9 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			PlanModifiers: []planmodifier.String{
 				helpers.TrimString(),
 			},
+			Validators: []validator.String{
+				helpers.TrimmedLengthBetween(2, 45),
+			},
 		},
 		"paused": schema.BoolAttribute{
 			Computed:            true,
@@ -99,6 +105,11 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			Required:            true,
 			Description:         "Regions to monitor from",
 			MarkdownDescription: "Regions to monitor from, see the full [region list](https://docs.phare.io/uptime/monitors#regions)",
+			Validators: []validator.List{
+				listvalidator.SizeBetween(1, 10),
+				listvalidator.UniqueValues(),
+				listvalidator.ValueStringsAre(stringvalidator.OneOf("as-jpn-hnd", "as-sgp-sin", "as-tha-bkk", "eu-deu-fra", "eu-fra-cdg", "eu-gbr-lhr", "eu-swe-arn", "ng-nld-ams", "na-mex-mex", "na-usa-iad", "na-usa-sea", "oc-aus-syd", "sa-bra-gru")),
+			},
 		},
 		"status": schema.StringAttribute{
 			Computed:            true,
@@ -209,11 +220,17 @@ func UptimeMonitorTcpResourceSchema(ctx context.Context) schema.Schema {
 						PlanModifiers: []planmodifier.String{
 							helpers.TrimString(),
 						},
+						Validators: []validator.String{
+							stringvalidator.LengthBetween(1, 255),
+						},
 					},
 					"port": schema.Int64Attribute{
 						Required:            true,
 						Description:         "Port number",
 						MarkdownDescription: "Port number",
+						Validators: []validator.Int64{
+							int64validator.Between(1, 65535),
+						},
 					},
 					"tls_skip_verify": schema.BoolAttribute{
 						Optional:            true,
@@ -284,6 +301,27 @@ func (r *uptimeMonitorTcpResource) ModifyPlan(ctx context.Context, req resource.
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_monitor_tcp", &resp.Diagnostics)
 
+	// Validate name length after trimming whitespace
+	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
+		trimmedLen := utf8.RuneCountInString(strings.TrimSpace(plan.Name.ValueString()))
+		if trimmedLen < 2 || trimmedLen > 45 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Invalid Name Length",
+				"Monitor name must be between 2 and 45 characters after trimming whitespace.",
+			)
+		}
+	}
+
+	// Validate request block is provided
+	if plan.Request == nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("request"),
+			"Missing Request Configuration",
+			"The 'request' block is required for TCP uptime monitors.",
+		)
+	}
+
 	// Validate region_threshold <= len(regions)
 	if !plan.RegionThreshold.IsNull() && !plan.RegionThreshold.IsUnknown() && !plan.Regions.IsNull() && !plan.Regions.IsUnknown() {
 		regionCount := int64(len(plan.Regions.Elements()))
@@ -295,6 +333,8 @@ func (r *uptimeMonitorTcpResource) ModifyPlan(ctx context.Context, req resource.
 		}
 	}
 }
+
+// Helper function to convert Terraform TCP request model to client request config
 func tcpRequestModelToClientConfig(ctx context.Context, request *TcpRequestModel) (client.MonitorRequestConfig, error) {
 	config := client.MonitorRequestConfig{}
 
@@ -342,7 +382,7 @@ func clientConfigToTcpRequestModel(ctx context.Context, config client.MonitorReq
 		if portInt, err := strconv.ParseInt(*config.Port, 10, 64); err == nil {
 			request.Port = types.Int64Value(portInt)
 		} else {
-			request.Port = types.Int64Null()
+			return nil, fmt.Errorf("invalid port value %q from API: %w", *config.Port, err)
 		}
 	} else {
 		request.Port = types.Int64Null()
