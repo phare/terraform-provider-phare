@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"terraform-provider-phare/internal/client"
 	"terraform-provider-phare/internal/provider/helpers"
@@ -302,7 +303,7 @@ func (r *uptimeMonitorTcpResource) ModifyPlan(ctx context.Context, req resource.
 
 	// Validate name length after trimming whitespace
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
-		trimmedLen := len(strings.TrimSpace(plan.Name.ValueString()))
+		trimmedLen := utf8.RuneCountInString(strings.TrimSpace(plan.Name.ValueString()))
 		if trimmedLen < 2 || trimmedLen > 45 {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("name"),

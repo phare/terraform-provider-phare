@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"terraform-provider-phare/internal/client"
 	"terraform-provider-phare/internal/provider/helpers"
@@ -695,7 +696,7 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 
 	// Validate trimmed name
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
-		trimmedLen := len(strings.TrimSpace(plan.Name.ValueString()))
+		trimmedLen := utf8.RuneCountInString(strings.TrimSpace(plan.Name.ValueString()))
 		if trimmedLen < 2 || trimmedLen > 30 {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("name"),
@@ -753,7 +754,7 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 				}
 
 			case "uptime/group":
-				if comp.Name.IsNull() || (!comp.Name.IsUnknown() && len(strings.TrimSpace(comp.Name.ValueString())) < 1) {
+				if comp.Name.IsNull() || (!comp.Name.IsUnknown() && utf8.RuneCountInString(strings.TrimSpace(comp.Name.ValueString())) < 1) {
 					resp.Diagnostics.AddAttributeError(
 						path.Root("components").AtListIndex(i).AtName("name"),
 						"Invalid Group Name",

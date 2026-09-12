@@ -28,11 +28,15 @@ func TestTrimmedLengthBetween(t *testing.T) {
 		{"within range", types.StringValue("hello"), false},
 		{"within range with surrounding whitespace", types.StringValue("   hello   "), false},
 		{"max length with surrounding whitespace", types.StringValue("   " + strings.Repeat("a", 10) + "   "), false},
+		{"unicode accented characters within limit", types.StringValue("  café  "), false},
+		{"unicode CJK characters within limit", types.StringValue("  日本語東京  "), false}, // 5 runes, 15 bytes
+		{"unicode emoji within limit", types.StringValue("  🚀🎉✨🔥  "), false},           // 4 runes, 16 bytes
 		{"below min length after trim", types.StringValue(" a "), true},
 		{"whitespace only trimmed to 0", types.StringValue("   "), true},
 		{"empty string", types.StringValue(""), true},
 		{"exceeds max length", types.StringValue(strings.Repeat("a", 11)), true},
 		{"exceeds max length after trim", types.StringValue("  " + strings.Repeat("a", 11) + "  "), true},
+		{"unicode exceeds max runes", types.StringValue("日本語日本語日本語日本語日本語"), true}, // 11 runes
 	}
 
 	for _, tc := range testCases {
@@ -69,8 +73,11 @@ func TestTrimmedLengthAtMost(t *testing.T) {
 		{"whitespace only", types.StringValue("   "), false},
 		{"exact max length", types.StringValue(strings.Repeat("a", 10)), false},
 		{"max length with surrounding whitespace", types.StringValue("   " + strings.Repeat("a", 10) + "   "), false},
+		{"unicode CJK within limit", types.StringValue("  日本語東京  "), false},  // 5 runes, 15 bytes
+		{"unicode emoji within limit", types.StringValue("  🚀🎉✨🔥  "), false}, // 4 runes, 16 bytes
 		{"exceeds max length", types.StringValue(strings.Repeat("a", 11)), true},
 		{"exceeds max length after trim", types.StringValue("  " + strings.Repeat("a", 11) + "  "), true},
+		{"unicode exceeds max runes", types.StringValue("日本語日本語日本語日本語日本語"), true}, // 11 runes
 	}
 
 	for _, tc := range testCases {

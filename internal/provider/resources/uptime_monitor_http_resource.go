@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -374,7 +375,7 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 
 	// Validate name length after trimming whitespace
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
-		trimmedLen := len(strings.TrimSpace(plan.Name.ValueString()))
+		trimmedLen := utf8.RuneCountInString(strings.TrimSpace(plan.Name.ValueString()))
 		if trimmedLen < 2 || trimmedLen > 45 {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("name"),

@@ -259,6 +259,11 @@ func TestProjectResource_ModifyPlan(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:        "unicode name trimmed to valid length",
+			planName:    types.StringValue("  Projet Éducation 🚀  "),
+			expectError: false,
+		},
+		{
 			name:        "whitespace-only name trimmed to 0 length",
 			planName:    types.StringValue("   "),
 			expectError: true,
