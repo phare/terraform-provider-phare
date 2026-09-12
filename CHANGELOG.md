@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.14] - 2026-09-12
+
+### Added
+
+- Early parameter validation to prevent apply errors across all resources (`phare_project`, `phare_uptime_monitor_http`, `phare_uptime_monitor_tcp`, `phare_uptime_status_page`, and `phare_alert_rule`).
+
+### Changed
+
+- Updated Go requirement to 1.27.
+
 ## [0.0.13] - 2026-08-14
 
 ### Fixed
