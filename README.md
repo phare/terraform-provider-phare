@@ -20,7 +20,7 @@
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.25 (for development)
+- [Go](https://golang.org/doc/install) >= 1.27 (for development)
 - [Phare API key](https://docs.phare.io/api-reference/introduction)
 
 ## Support
