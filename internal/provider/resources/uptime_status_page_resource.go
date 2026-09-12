@@ -753,7 +753,7 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 				}
 
 			case "uptime/group":
-				if comp.Name.IsNull() || comp.Name.IsUnknown() || len(strings.TrimSpace(comp.Name.ValueString())) < 1 {
+				if comp.Name.IsNull() || (!comp.Name.IsUnknown() && len(strings.TrimSpace(comp.Name.ValueString())) < 1) {
 					resp.Diagnostics.AddAttributeError(
 						path.Root("components").AtListIndex(i).AtName("name"),
 						"Invalid Group Name",

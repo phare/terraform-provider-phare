@@ -394,13 +394,15 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 	} else {
 		// Validate request body is only allowed for POST, PUT, PATCH
 		if !plan.Request.Body.IsNull() && !plan.Request.Body.IsUnknown() && plan.Request.Body.ValueString() != "" {
-			method := plan.Request.Method.ValueString()
-			if method != "POST" && method != "PUT" && method != "PATCH" {
-				resp.Diagnostics.AddAttributeError(
-					path.Root("request").AtName("body"),
-					"Invalid Request Body",
-					"Request body is prohibited unless method is POST, PUT, or PATCH",
-				)
+			if !plan.Request.Method.IsUnknown() {
+				method := plan.Request.Method.ValueString()
+				if method != "POST" && method != "PUT" && method != "PATCH" {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("request").AtName("body"),
+						"Invalid Request Body",
+						"Request body is prohibited unless method is POST, PUT, or PATCH",
+					)
+				}
 			}
 		}
 

@@ -876,6 +876,23 @@ func TestUptimeStatusPageResource_ModifyPlan(t *testing.T) {
 		require.True(t, found)
 	})
 
+	t.Run("group with unknown name allowed during planning", func(t *testing.T) {
+		planData := validStatusPageModel(t)
+		comp := createComponent(t, "uptime/group", nil, nil, []NestedComponentModel{
+			createNestedComponent("uptime/monitor", int64Ptr(102)),
+		})
+		comp.Name = types.StringUnknown()
+		planData.Components = createComponentsList(t, []ComponentModel{comp})
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags := plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{Plan: plan}, resp)
+		require.False(t, resp.Diagnostics.HasError())
+	})
+
 	t.Run("group with null components", func(t *testing.T) {
 		planData := validStatusPageModel(t)
 		planData.Components = createComponentsList(t, []ComponentModel{

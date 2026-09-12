@@ -901,6 +901,30 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 		require.False(t, resp.Diagnostics.HasError())
 	})
 
+	t.Run("request body with unknown method allowed during planning", func(t *testing.T) {
+		reqModel := validHttpRequestModel()
+		reqModel.Method = types.StringUnknown()
+		reqModel.Body = types.StringValue("{\"data\": 1}")
+
+		planData := uptimeMonitorHttpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Name:    types.StringValue("Valid Monitor"),
+				Regions: types.ListNull(types.StringType),
+			},
+			Request:           reqModel,
+			SuccessAssertions: validSuccessAssertionsModel(),
+		}
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags := plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{Plan: plan}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+	})
+
 	t.Run("request headers more than 10 rejected", func(t *testing.T) {
 		reqModel := validHttpRequestModel()
 		headerElements := make([]attr.Value, 11)
