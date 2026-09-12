@@ -165,6 +165,8 @@ func TestUptimeStatusPageResource_NameValidation(t *testing.T) {
 	}{
 		{"valid 2 chars", types.StringValue("ab"), false},
 		{"valid 30 chars", types.StringValue(strings.Repeat("a", 30)), false},
+		{"valid 30 chars with surrounding whitespace", types.StringValue("   " + strings.Repeat("a", 30) + "   "), false},
+		{"invalid whitespace only", types.StringValue("   "), true},
 		{"invalid empty string", types.StringValue(""), true},
 		{"invalid 1 char", types.StringValue("a"), true},
 		{"invalid 31 chars", types.StringValue(strings.Repeat("a", 31)), true},

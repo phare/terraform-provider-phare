@@ -85,6 +85,16 @@ func TestProjectResource_NameValidation(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:        "valid name with whitespace padding within limit",
+			val:         types.StringValue("   " + strings.Repeat("a", 25) + "   "),
+			expectError: false,
+		},
+		{
+			name:        "invalid whitespace only",
+			val:         types.StringValue("   "),
+			expectError: true,
+		},
+		{
 			name:        "invalid empty string",
 			val:         types.StringValue(""),
 			expectError: true,

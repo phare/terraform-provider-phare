@@ -74,7 +74,7 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 				helpers.TrimString(),
 			},
 			Validators: []validator.String{
-				stringvalidator.LengthBetween(2, 45),
+				helpers.TrimmedLengthBetween(2, 45),
 			},
 		},
 		"paused": schema.BoolAttribute{

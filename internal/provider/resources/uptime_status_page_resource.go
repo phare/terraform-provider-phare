@@ -219,7 +219,7 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					helpers.TrimString(),
 				},
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(2, 250),
+					helpers.TrimmedLengthBetween(2, 250),
 				},
 			},
 			"domain": schema.StringAttribute{
@@ -231,7 +231,7 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					helpers.TrimString(),
 				},
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(4, 60),
+					helpers.TrimmedLengthBetween(4, 60),
 				},
 			},
 			"favicon_dark": schema.StringAttribute{
@@ -267,7 +267,7 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					helpers.TrimString(),
 				},
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(2, 30),
+					helpers.TrimmedLengthBetween(2, 30),
 				},
 			},
 			"project_id": schema.Int64Attribute{
@@ -320,7 +320,7 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					helpers.TrimString(),
 				},
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(2, 150),
+					helpers.TrimmedLengthBetween(2, 150),
 				},
 			},
 			"updated_at": schema.StringAttribute{

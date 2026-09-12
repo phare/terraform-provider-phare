@@ -92,6 +92,16 @@ func TestUptimeMonitorHttpResource_NameValidation(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:        "valid 45 chars with surrounding whitespace",
+			val:         types.StringValue("   " + strings.Repeat("a", 45) + "   "),
+			expectError: false,
+		},
+		{
+			name:        "invalid whitespace only",
+			val:         types.StringValue("   "),
+			expectError: true,
+		},
+		{
 			name:        "invalid empty string",
 			val:         types.StringValue(""),
 			expectError: true,

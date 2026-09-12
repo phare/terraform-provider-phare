@@ -11,7 +11,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -71,7 +70,7 @@ func ProjectResourceSchema(ctx context.Context) schema.Schema {
 					helpers.TrimString(),
 				},
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(1, 25),
+					helpers.TrimmedLengthBetween(1, 25),
 				},
 			},
 			"slug": schema.StringAttribute{

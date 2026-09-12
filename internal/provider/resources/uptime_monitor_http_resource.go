@@ -123,7 +123,7 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 							helpers.TrimString(),
 						},
 						Validators: []validator.String{
-							stringvalidator.LengthAtMost(500),
+							helpers.TrimmedLengthAtMost(500),
 						},
 					},
 					"follow_redirects": schema.BoolAttribute{
@@ -173,7 +173,7 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 							helpers.TrimString(),
 						},
 						Validators: []validator.String{
-							stringvalidator.LengthBetween(1, 50),
+							helpers.TrimmedLengthBetween(1, 50),
 						},
 					},
 				},
@@ -202,7 +202,7 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 										helpers.TrimString(),
 									},
 									Validators: []validator.String{
-										stringvalidator.LengthAtMost(1024),
+										helpers.TrimmedLengthAtMost(1024),
 									},
 								},
 							},
@@ -255,7 +255,7 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 										helpers.TrimString(),
 									},
 									Validators: []validator.String{
-										stringvalidator.LengthBetween(1, 100),
+										helpers.TrimmedLengthBetween(1, 100),
 									},
 								},
 								"operator": schema.StringAttribute{
