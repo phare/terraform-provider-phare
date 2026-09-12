@@ -10,6 +10,8 @@ import (
 	"terraform-provider-phare/internal/provider/helpers"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -29,6 +31,7 @@ var (
 	_ resource.Resource                = &projectResource{}
 	_ resource.ResourceWithConfigure   = &projectResource{}
 	_ resource.ResourceWithImportState = &projectResource{}
+	_ resource.ResourceWithModifyPlan  = &projectResource{}
 )
 
 // ProjectResourceSchema defines the schema for the project resource
@@ -55,6 +58,10 @@ func ProjectResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "List of team member IDs (1-100 members)",
 				MarkdownDescription: "List of team member IDs (1-100 members)",
+				Validators: []validator.List{
+					listvalidator.SizeBetween(1, 100),
+					listvalidator.UniqueValues(),
+				},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -62,6 +69,9 @@ func ProjectResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Project name (1-25 characters)",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
+				},
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(1, 25),
 				},
 			},
 			"slug": schema.StringAttribute{
@@ -172,6 +182,30 @@ func (r *projectResource) Configure(ctx context.Context, req resource.ConfigureR
 	}
 
 	r.client = apiClient
+}
+
+func (r *projectResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Skip validation if resource is being destroyed
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var plan ProjectModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
+		trimmedLen := len(strings.TrimSpace(plan.Name.ValueString()))
+		if trimmedLen < 1 || trimmedLen > 25 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Invalid Name Length",
+				"Project name must be between 1 and 25 characters after trimming whitespace.",
+			)
+		}
+	}
 }
 
 // validateAPIKeyScope checks if the API key is organization-scoped.

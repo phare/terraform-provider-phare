@@ -120,7 +120,7 @@ resource "phare_uptime_status_page" "main" {
 - `logo_dark` (String) Path to dark theme logo image file (jpeg/png/svg). Remove attribute to delete logo.
 - `logo_light` (String) Path to light theme logo image file (jpeg/png/svg). Remove attribute to delete logo.
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
-- `subscription_channels` (List of String) Subscription channels available (rss, atom)
+- `subscription_channels` (List of String) Subscription channels available (rss, atom, slack)
 - `theme` (Block, Optional) Theme settings to customize the status page (see [below for nested schema](#nestedblock--theme))
 
 ### Read-Only

@@ -3,6 +3,8 @@ package resources
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -120,6 +122,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 						PlanModifiers: []planmodifier.String{
 							helpers.TrimString(),
 						},
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(500),
+						},
 					},
 					"follow_redirects": schema.BoolAttribute{
 						Optional:            true,
@@ -153,6 +158,10 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 						PlanModifiers: []planmodifier.String{
 							helpers.TrimString(),
 						},
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(255),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^https?://`), "must be a valid http or https URL"),
+						},
 					},
 					"user_agent_secret": schema.StringAttribute{
 						Optional:            true,
@@ -162,6 +171,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent)",
 						PlanModifiers: []planmodifier.String{
 							helpers.TrimString(),
+						},
+						Validators: []validator.String{
+							stringvalidator.LengthBetween(1, 50),
 						},
 					},
 				},
@@ -176,6 +188,11 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 									PlanModifiers: []planmodifier.String{
 										helpers.TrimString(),
 									},
+									Validators: []validator.String{
+										stringvalidator.LengthBetween(1, 50),
+										stringvalidator.RegexMatches(regexp.MustCompile("^[a-zA-Z0-9-]+$"), "must contain only alphanumeric characters and dashes"),
+										stringvalidator.NoneOf("User-Agent", "Signature", "Signature-Input", "Signature-Agent"),
+									},
 								},
 								"value": schema.StringAttribute{
 									Required:            true,
@@ -183,6 +200,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 									MarkdownDescription: "Header value",
 									PlanModifiers: []planmodifier.String{
 										helpers.TrimString(),
+									},
+									Validators: []validator.String{
+										stringvalidator.LengthAtMost(1024),
 									},
 								},
 							},
@@ -233,6 +253,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 									MarkdownDescription: "The name of the header to assert",
 									PlanModifiers: []planmodifier.String{
 										helpers.TrimString(),
+									},
+									Validators: []validator.String{
+										stringvalidator.LengthBetween(1, 100),
 									},
 								},
 								"operator": schema.StringAttribute{
@@ -348,6 +371,88 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_monitor_http", &resp.Diagnostics)
+
+	// Validate name length after trimming whitespace
+	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
+		trimmedLen := len(strings.TrimSpace(plan.Name.ValueString()))
+		if trimmedLen < 2 || trimmedLen > 45 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Invalid Name Length",
+				"Monitor name must be between 2 and 45 characters after trimming whitespace.",
+			)
+		}
+	}
+
+	// Validate request block is provided
+	if plan.Request == nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("request"),
+			"Missing Request Configuration",
+			"The 'request' block is required for HTTP uptime monitors.",
+		)
+	} else {
+		// Validate request body is only allowed for POST, PUT, PATCH
+		if !plan.Request.Body.IsNull() && !plan.Request.Body.IsUnknown() && plan.Request.Body.ValueString() != "" {
+			method := plan.Request.Method.ValueString()
+			if method != "POST" && method != "PUT" && method != "PATCH" {
+				resp.Diagnostics.AddAttributeError(
+					path.Root("request").AtName("body"),
+					"Invalid Request Body",
+					"Request body is prohibited unless method is POST, PUT, or PATCH",
+				)
+			}
+		}
+
+		// Validate headers count does not exceed 10
+		if !plan.Request.Headers.IsNull() && !plan.Request.Headers.IsUnknown() && len(plan.Request.Headers.Elements()) > 10 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("request").AtName("headers"),
+				"Too Many Headers",
+				"Cannot configure more than 10 HTTP headers",
+			)
+		}
+	}
+
+	// Validate success_assertions block is provided
+	if plan.SuccessAssertions == nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("success_assertions"),
+			"Missing Success Assertions",
+			"The 'success_assertions' block is required for HTTP uptime monitors.",
+		)
+	} else {
+		hasAssertions := false
+		hasUnknown := plan.SuccessAssertions.StatusCode.IsUnknown() ||
+			plan.SuccessAssertions.ResponseHeader.IsUnknown() ||
+			plan.SuccessAssertions.ResponseBody.IsUnknown()
+
+		if !plan.SuccessAssertions.StatusCode.IsNull() && !plan.SuccessAssertions.StatusCode.IsUnknown() && len(plan.SuccessAssertions.StatusCode.Elements()) > 0 {
+			hasAssertions = true
+		}
+		if !plan.SuccessAssertions.ResponseHeader.IsNull() && !plan.SuccessAssertions.ResponseHeader.IsUnknown() && len(plan.SuccessAssertions.ResponseHeader.Elements()) > 0 {
+			hasAssertions = true
+		}
+		if !plan.SuccessAssertions.ResponseBody.IsNull() && !plan.SuccessAssertions.ResponseBody.IsUnknown() && len(plan.SuccessAssertions.ResponseBody.Elements()) > 0 {
+			hasAssertions = true
+		}
+
+		if !hasAssertions && !hasUnknown {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("success_assertions"),
+				"Missing Success Assertions",
+				"At least one success assertion (status_code, response_header, or response_body) must be provided.",
+			)
+		}
+
+		if !plan.SuccessAssertions.StatusCode.IsNull() && !plan.SuccessAssertions.StatusCode.IsUnknown() && len(plan.SuccessAssertions.StatusCode.Elements()) > 1 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("success_assertions").AtName("status_code"),
+				"Too Many Status Code Assertions",
+				"Only one status code assertion is allowed",
+			)
+		}
+	}
 
 	// Validate region_threshold <= len(regions)
 	if !plan.RegionThreshold.IsNull() && !plan.RegionThreshold.IsUnknown() && !plan.Regions.IsNull() && !plan.Regions.IsUnknown() {

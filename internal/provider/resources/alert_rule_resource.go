@@ -156,6 +156,28 @@ func (r *alertRuleResource) Schema(ctx context.Context, req resource.SchemaReque
 		},
 	}
 
+	// Validate event enum
+	if attr, ok := generatedSchema.Attributes["event"].(schema.StringAttribute); ok {
+		attr.Validators = []validator.String{
+			stringvalidator.OneOf(
+				"uptime.monitor.created",
+				"uptime.monitor.deleted",
+				"uptime.monitor_certificate.discovered",
+				"uptime.monitor_certificate.expiring",
+				"uptime.incident.created",
+				"uptime.incident.propagated",
+				"uptime.incident.partially_recovered",
+				"uptime.incident.recovered",
+				"uptime.incident_comment.created",
+				"uptime.incident_update.published",
+				"uptime.maintenance_window.in_progress",
+				"uptime.maintenance_window.completed",
+				"uptime.maintenance_window.cancelled",
+			),
+		}
+		generatedSchema.Attributes["event"] = attr
+	}
+
 	// Add validator for rate_limit enum
 	if attr, ok := generatedSchema.Attributes["rate_limit"].(schema.Int64Attribute); ok {
 		attr.Validators = []validator.Int64{
@@ -181,6 +203,28 @@ func (r *alertRuleResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_alert_rule", &resp.Diagnostics)
+
+	// Validate event_settings JSON
+	if !plan.EventSettings.IsNull() && !plan.EventSettings.IsUnknown() {
+		if !json.Valid([]byte(plan.EventSettings.ValueString())) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("event_settings"),
+				"Invalid event_settings JSON",
+				"event_settings must be a valid JSON string",
+			)
+		}
+	}
+
+	// Validate integration_settings JSON
+	if !plan.IntegrationSettings.IsNull() && !plan.IntegrationSettings.IsUnknown() {
+		if !json.Valid([]byte(plan.IntegrationSettings.ValueString())) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("integration_settings"),
+				"Invalid integration_settings JSON",
+				"integration_settings must be a valid JSON string",
+			)
+		}
+	}
 }
 
 // mapAPIResponseToModel maps API response data to the resource model

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"terraform-provider-phare/internal/client"
 	"terraform-provider-phare/internal/provider/helpers"
@@ -101,12 +102,19 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "List of IP addresses or CIDR ranges allowed to access the status page. Requires an active Scale plan subscription.",
 				MarkdownDescription: "List of IP addresses or CIDR ranges allowed to access the status page. Requires an active Scale plan subscription.",
+				Validators: []validator.List{
+					listvalidator.SizeBetween(1, 50),
+					listvalidator.UniqueValues(),
+				},
 			},
 			"access_password": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				Description:         "Password required to access the status page. Requires an active Scale plan subscription.",
 				MarkdownDescription: "Password required to access the status page. Requires an active Scale plan subscription.",
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(8, 500),
+				},
 			},
 			"access_password_enabled": schema.BoolAttribute{
 				Computed:            true,
@@ -118,6 +126,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Sensitive:           true,
 				Description:         "Token required to access the status page. Requires an active Scale plan subscription.",
 				MarkdownDescription: "Token required to access the status page. Requires an active Scale plan subscription.",
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(8, 500),
+				},
 			},
 			"access_token_enabled": schema.BoolAttribute{
 				Computed:            true,
@@ -191,6 +202,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "List of components to show on the status page",
 				MarkdownDescription: "List of components to show on the status page",
+				Validators: []validator.List{
+					listvalidator.SizeBetween(1, 100),
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
@@ -204,6 +218,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(2, 250),
+				},
 			},
 			"domain": schema.StringAttribute{
 				Optional:            true,
@@ -212,6 +229,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Custom domain for the status page, [see docs](https://docs.phare.io/uptime/status-pages#custom-domain)",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
+				},
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(4, 60),
 				},
 			},
 			"favicon_dark": schema.StringAttribute{
@@ -246,6 +266,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(2, 30),
+				},
 			},
 			"project_id": schema.Int64Attribute{
 				Computed:            true,
@@ -264,18 +287,30 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
 				},
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(2, 30),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[a-z0-9-]+$"), "must contain only lowercase letters, numbers, and dashes"),
+				},
 			},
 			"subscription_channels": schema.ListAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
-				Description:         "Subscription channels available (rss, atom)",
-				MarkdownDescription: "Subscription channels available (rss, atom)",
+				Description:         "Subscription channels available (rss, atom, slack)",
+				MarkdownDescription: "Subscription channels available (rss, atom, slack)",
+				Validators: []validator.List{
+					listvalidator.SizeBetween(0, 3),
+					listvalidator.UniqueValues(),
+					listvalidator.ValueStringsAre(stringvalidator.OneOf("rss", "atom", "slack")),
+				},
 			},
 			"timeframe": schema.Int64Attribute{
 				Required:            true,
 				Description:         "Number of days of status/incident history to display (30, 60, or 90)",
 				MarkdownDescription: "Number of days of status/incident history to display (30, 60, or 90)",
+				Validators: []validator.Int64{
+					int64validator.OneOf(30, 60, 90),
+				},
 			},
 			"title": schema.StringAttribute{
 				Required:            true,
@@ -283,6 +318,9 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Status page title",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
+				},
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(2, 150),
 				},
 			},
 			"updated_at": schema.StringAttribute{
@@ -296,6 +334,10 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "URL to redirect users from the status page",
 				PlanModifiers: []planmodifier.String{
 					helpers.TrimString(),
+				},
+				Validators: []validator.String{
+					stringvalidator.LengthAtMost(250),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^https?://`), "must be a valid http or https URL"),
 				},
 			},
 			"project_scope": schema.DynamicAttribute{
@@ -631,23 +673,6 @@ func (r *uptimeStatusPageResource) Schema(ctx context.Context, req resource.Sche
 	generatedSchema.Description = "Manages a status page in Phare. Status pages provide visibility into system status and incidents."
 	generatedSchema.MarkdownDescription = "Manages a status page in Phare. Status pages provide visibility into system status and incidents."
 
-	// Make timeframe required with default value and add validator
-	generatedSchema.Attributes["timeframe"] = schema.Int64Attribute{
-		Required:    true,
-		Description: "Number of days of status/incident history to display (30, 60, or 90)",
-		Validators: []validator.Int64{
-			int64validator.OneOf(30, 60, 90),
-		},
-	}
-
-	// Add validator for subscription_channels
-	if attr, ok := generatedSchema.Attributes["subscription_channels"].(schema.ListAttribute); ok {
-		attr.Validators = []validator.List{
-			listvalidator.ValueStringsAre(stringvalidator.OneOf("rss", "atom")),
-		}
-		generatedSchema.Attributes["subscription_channels"] = attr
-	}
-
 	resp.Schema = generatedSchema
 }
 
@@ -667,6 +692,130 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_status_page", &resp.Diagnostics)
+
+	// Validate trimmed name
+	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
+		trimmedLen := len(strings.TrimSpace(plan.Name.ValueString()))
+		if trimmedLen < 2 || trimmedLen > 30 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Invalid Name Length",
+				"Status page name must be between 2 and 30 characters after trimming whitespace.",
+			)
+		}
+	}
+
+	// Validate subdomain contains at least one letter
+	if !plan.Subdomain.IsNull() && !plan.Subdomain.IsUnknown() {
+		if !regexp.MustCompile("[a-z]").MatchString(plan.Subdomain.ValueString()) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("subdomain"),
+				"Invalid Subdomain",
+				"Subdomain must contain at least one letter.",
+			)
+		}
+	}
+
+	// Validate components if components is known
+	if !plan.Components.IsNull() && !plan.Components.IsUnknown() {
+		var components []ComponentModel
+		resp.Diagnostics.Append(plan.Components.ElementsAs(ctx, &components, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		seenMonitors := make(map[int64]bool)
+
+		for i, comp := range components {
+			if comp.ComponentableType.IsNull() || comp.ComponentableType.IsUnknown() {
+				continue
+			}
+
+			switch comp.ComponentableType.ValueString() {
+			case "uptime/monitor":
+				if comp.ComponentableID.IsNull() {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("components").AtListIndex(i).AtName("componentable_id"),
+						"Missing Component ID",
+						"componentable_id is required when componentable_type is 'uptime/monitor'.",
+					)
+				} else if !comp.ComponentableID.IsUnknown() {
+					id := comp.ComponentableID.ValueInt64()
+					if seenMonitors[id] {
+						resp.Diagnostics.AddAttributeError(
+							path.Root("components").AtListIndex(i).AtName("componentable_id"),
+							"Duplicate Monitor",
+							fmt.Sprintf("Monitor with ID %d is duplicated. Monitor IDs must not appear more than once across top-level components and group components.", id),
+						)
+					} else {
+						seenMonitors[id] = true
+					}
+				}
+
+			case "uptime/group":
+				if comp.Name.IsNull() || comp.Name.IsUnknown() || len(strings.TrimSpace(comp.Name.ValueString())) < 1 {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("components").AtListIndex(i).AtName("name"),
+						"Invalid Group Name",
+						"Group name is required and cannot be empty.",
+					)
+				}
+
+				if comp.Components.IsNull() {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("components").AtListIndex(i).AtName("components"),
+						"Missing Group Components",
+						"Group components list is required.",
+					)
+				} else if !comp.Components.IsUnknown() {
+					var groupComponents []NestedComponentModel
+					resp.Diagnostics.Append(comp.Components.ElementsAs(ctx, &groupComponents, false)...)
+					if resp.Diagnostics.HasError() {
+						continue
+					}
+
+					if len(groupComponents) < 1 || len(groupComponents) > 100 {
+						resp.Diagnostics.AddAttributeError(
+							path.Root("components").AtListIndex(i).AtName("components"),
+							"Invalid Group Components Count",
+							"Group components list must contain between 1 and 100 items.",
+						)
+					}
+
+					for j, childComp := range groupComponents {
+						if !childComp.ComponentableType.IsNull() && !childComp.ComponentableType.IsUnknown() {
+							if childComp.ComponentableType.ValueString() != "uptime/monitor" {
+								resp.Diagnostics.AddAttributeError(
+									path.Root("components").AtListIndex(i).AtName("components").AtListIndex(j).AtName("componentable_type"),
+									"Invalid Component Type",
+									"Group nested component type must be 'uptime/monitor'.",
+								)
+							}
+						}
+
+						if childComp.ComponentableID.IsNull() {
+							resp.Diagnostics.AddAttributeError(
+								path.Root("components").AtListIndex(i).AtName("components").AtListIndex(j).AtName("componentable_id"),
+								"Missing Component ID",
+								"Group nested component monitor must have a valid componentable_id.",
+							)
+						} else if !childComp.ComponentableID.IsUnknown() {
+							childID := childComp.ComponentableID.ValueInt64()
+							if seenMonitors[childID] {
+								resp.Diagnostics.AddAttributeError(
+									path.Root("components").AtListIndex(i).AtName("components").AtListIndex(j).AtName("componentable_id"),
+									"Duplicate Monitor",
+									fmt.Sprintf("Monitor with ID %d is duplicated. Monitor IDs must not appear more than once across top-level components and group components.", childID),
+								)
+							} else {
+								seenMonitors[childID] = true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 // Helper function to convert Terraform theme colors model to client theme colors
