@@ -47,6 +47,7 @@ output "allowed_ips" {
 - `name` (String) Status page name
 - `project_id` (Number) Parent project ID
 - `search_engine_indexed` (Boolean) Whether search engines can index the page
+- `show_response_times` (Boolean) Whether to display response times for monitors on the status page
 - `subdomain` (String) Subdomain for the status page
 - `theme` (Attributes) Theme settings to customize the status page (see [below for nested schema](#nestedatt--theme))
 - `timeframe` (Number) Number of days of status/incident history to display
@@ -62,6 +63,7 @@ Read-Only:
 - `componentable_id` (Number) ID of the component entity (for uptime/monitor)
 - `componentable_type` (String) Type of the component entity (uptime/monitor or uptime/group)
 - `components` (Attributes List) List of monitor components shown inside the group (for uptime/group) (see [below for nested schema](#nestedatt--components--components))
+- `display_name` (String) Custom display name of the monitor on the status page (for uptime/monitor)
 - `is_expanded` (Boolean) Whether the component group is expanded by default (for uptime/group)
 - `name` (String) Name of the component group (for uptime/group)
 
@@ -72,6 +74,7 @@ Read-Only:
 
 - `componentable_id` (Number) ID of the component entity inside the group
 - `componentable_type` (String) Type of component entity (uptime/monitor)
+- `display_name` (String) Custom display name of the monitor on the status page
 
 
 

@@ -15,6 +15,7 @@ resource "phare_uptime_status_page" "main" {
   subdomain             = "example" # example.status.phare.io
   domain                = "status.example.com"
   timeframe             = 30
+  show_response_times   = true
   logo_light            = "${path.module}/assets/logo-light.png"
   logo_dark             = "${path.module}/assets/logo-dark.png"
   favicon_light         = "${path.module}/assets/favicon.png"
@@ -58,6 +59,7 @@ resource "phare_uptime_status_page" "main" {
     {
       componentable_type = "uptime/monitor"
       componentable_id   = data.phare_uptime_monitor.web.id
+      display_name       = "Marketing Website"
     },
     {
       componentable_type = "uptime/group"
@@ -67,6 +69,7 @@ resource "phare_uptime_status_page" "main" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = data.phare_uptime_monitor.api.id
+          display_name       = "API Gateway"
         }
       ]
     }

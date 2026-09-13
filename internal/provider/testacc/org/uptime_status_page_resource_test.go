@@ -111,6 +111,7 @@ resource "phare_uptime_status_page" "test" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = phare_uptime_monitor_http.test.id
+          display_name       = "Core Monitor"
         }
       ]
     }
@@ -125,6 +126,7 @@ resource "phare_uptime_status_page" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "search_engine_indexed", "false"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "subdomain", "invariance"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "timeframe", "30"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "show_response_times", "true"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "color_scheme", "all"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.rounded", "true"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "theme.border_width", "2"),
@@ -138,6 +140,7 @@ resource "phare_uptime_status_page" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.is_expanded", "true"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.components.0.componentable_type", "uptime/monitor"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "components.0.components.0.componentable_id"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.components.0.display_name", "Core Monitor"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "id"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "project_id"),
 					testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "created_at"),
@@ -185,6 +188,7 @@ resource "phare_uptime_status_page" "test" {
   subdomain             = "invariance"
   timeframe             = 60
   color_scheme          = "all"
+  show_response_times   = false
 
   theme {
     rounded      = true
@@ -238,6 +242,7 @@ resource "phare_uptime_status_page" "test" {
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "description", "This is an updated status page description."),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "search_engine_indexed", "true"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "timeframe", "60"),
+					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "show_response_times", "false"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.componentable_type", "uptime/group"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.name", "Core Services Updated"),
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.is_expanded", "false"),

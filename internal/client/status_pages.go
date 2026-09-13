@@ -23,6 +23,7 @@ type StatusPageRequest struct {
 	AccessIPs            []string              `json:"access_ips,omitempty"`
 	AccessToken          *string               `json:"access_token,omitempty"`
 	AccessPassword       *string               `json:"access_password,omitempty"`
+	ShowResponseTimes    *bool                 `json:"show_response_times,omitempty"`
 }
 
 // StatusPageTheme represents theme customization for a status page.
@@ -52,6 +53,7 @@ type StatusPageComponent struct {
 	ComponentableType string                `json:"componentable_type"`
 	ComponentableID   *int64                `json:"componentable_id,omitempty"`
 	Name              *string               `json:"name,omitempty"`
+	DisplayName       *string               `json:"display_name,omitempty"`
 	IsExpanded        *bool                 `json:"is_expanded,omitempty"`
 	Components        []StatusPageComponent `json:"components,omitempty"`
 }
@@ -71,6 +73,7 @@ type StatusPageResponse struct {
 	Theme                 *StatusPageTheme      `json:"theme,omitempty"`
 	Components            []StatusPageComponent `json:"components"`
 	Timeframe             *int64                `json:"timeframe,omitempty"`
+	ShowResponseTimes     *bool                 `json:"show_response_times,omitempty"`
 	SubscriptionChannels  []string              `json:"subscription_channels,omitempty"`
 	AccessIPs             []string              `json:"access_ips,omitempty"`
 	AccessPasswordEnabled bool                  `json:"access_password_enabled"`
@@ -188,6 +191,13 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 	if req.Timeframe != nil {
 		fields = append(fields, FormField{"timeframe", fmt.Sprintf("%d", *req.Timeframe)})
 	}
+	if req.ShowResponseTimes != nil {
+		if *req.ShowResponseTimes {
+			fields = append(fields, FormField{"show_response_times", "1"})
+		} else {
+			fields = append(fields, FormField{"show_response_times", "0"})
+		}
+	}
 
 	// Add components as indexed fields
 	for i, comp := range req.Components {
@@ -197,6 +207,9 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 		}
 		if comp.Name != nil {
 			fields = append(fields, FormField{fmt.Sprintf("components[%d][name]", i), *comp.Name})
+		}
+		if comp.DisplayName != nil {
+			fields = append(fields, FormField{fmt.Sprintf("components[%d][display_name]", i), *comp.DisplayName})
 		}
 		if comp.IsExpanded != nil {
 			if *comp.IsExpanded {
@@ -209,6 +222,9 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 			fields = append(fields, FormField{fmt.Sprintf("components[%d][components][%d][componentable_type]", i, j), childComp.ComponentableType})
 			if childComp.ComponentableID != nil {
 				fields = append(fields, FormField{fmt.Sprintf("components[%d][components][%d][componentable_id]", i, j), fmt.Sprintf("%d", *childComp.ComponentableID)})
+			}
+			if childComp.DisplayName != nil {
+				fields = append(fields, FormField{fmt.Sprintf("components[%d][components][%d][display_name]", i, j), *childComp.DisplayName})
 			}
 		}
 	}

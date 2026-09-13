@@ -39,6 +39,7 @@ type statusPageModel struct {
 	Title                 types.String `tfsdk:"title"`
 	Description           types.String `tfsdk:"description"`
 	SearchEngineIndexed   types.Bool   `tfsdk:"search_engine_indexed"`
+	ShowResponseTimes     types.Bool   `tfsdk:"show_response_times"`
 	WebsiteURL            types.String `tfsdk:"website_url"`
 	ColorScheme           types.String `tfsdk:"color_scheme"`
 	Timeframe             types.Int64  `tfsdk:"timeframe"`
@@ -79,6 +80,12 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 		model.Timeframe = types.Int64Value(*page.Timeframe)
 	} else {
 		model.Timeframe = types.Int64Null()
+	}
+
+	if page.ShowResponseTimes != nil {
+		model.ShowResponseTimes = types.BoolValue(*page.ShowResponseTimes)
+	} else {
+		model.ShowResponseTimes = types.BoolValue(true)
 	}
 
 	if page.ColorScheme != nil {
@@ -183,6 +190,7 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 		AttrTypes: map[string]attr.Type{
 			"componentable_type": types.StringType,
 			"componentable_id":   types.Int64Type,
+			"display_name":       types.StringType,
 		},
 	}
 
@@ -191,6 +199,7 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 			"componentable_type": types.StringType,
 			"componentable_id":   types.Int64Type,
 			"name":               types.StringType,
+			"display_name":       types.StringType,
 			"is_expanded":        types.BoolType,
 			"components":         types.ListType{ElemType: nestedComponentType},
 		},
@@ -203,6 +212,7 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 				"componentable_type": types.StringValue(comp.ComponentableType),
 				"componentable_id":   types.Int64Null(),
 				"name":               types.StringNull(),
+				"display_name":       types.StringNull(),
 				"is_expanded":        types.BoolNull(),
 				"components":         types.ListNull(nestedComponentType),
 			}
@@ -212,6 +222,9 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 			}
 			if comp.Name != nil {
 				compAttrs["name"] = types.StringValue(*comp.Name)
+			}
+			if comp.DisplayName != nil {
+				compAttrs["display_name"] = types.StringValue(*comp.DisplayName)
 			}
 			if comp.IsExpanded != nil {
 				compAttrs["is_expanded"] = types.BoolValue(*comp.IsExpanded)
@@ -223,11 +236,16 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 					if childComp.ComponentableID != nil {
 						nestedID = types.Int64Value(*childComp.ComponentableID)
 					}
+					nestedDisplayName := types.StringNull()
+					if childComp.DisplayName != nil {
+						nestedDisplayName = types.StringValue(*childComp.DisplayName)
+					}
 					nestedObj, diags := types.ObjectValue(
 						nestedComponentType.AttrTypes,
 						map[string]attr.Value{
 							"componentable_type": types.StringValue(childComp.ComponentableType),
 							"componentable_id":   nestedID,
+							"display_name":       nestedDisplayName,
 						},
 					)
 					resp.Diagnostics.Append(diags...)
@@ -308,6 +326,10 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 		"search_engine_indexed": schema.BoolAttribute{
 			Computed:    true,
 			Description: "Whether search engines can index the page",
+		},
+		"show_response_times": schema.BoolAttribute{
+			Computed:    true,
+			Description: "Whether to display response times for monitors on the status page",
 		},
 		"website_url": schema.StringAttribute{
 			Computed:    true,
@@ -444,6 +466,10 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 						Computed:    true,
 						Description: "Name of the component group (for uptime/group)",
 					},
+					"display_name": schema.StringAttribute{
+						Computed:    true,
+						Description: "Custom display name of the monitor on the status page (for uptime/monitor)",
+					},
 					"is_expanded": schema.BoolAttribute{
 						Computed:    true,
 						Description: "Whether the component group is expanded by default (for uptime/group)",
@@ -460,6 +486,10 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 								"componentable_id": schema.Int64Attribute{
 									Computed:    true,
 									Description: "ID of the component entity inside the group",
+								},
+								"display_name": schema.StringAttribute{
+									Computed:    true,
+									Description: "Custom display name of the monitor on the status page",
 								},
 							},
 						},
@@ -551,11 +581,10 @@ func (d *uptimeStatusPageDataSource) Read(ctx context.Context, req datasource.Re
 	}
 
 	// Map API response to state using shared helper
-	mappedModel := mapStatusPageToModel(ctx, statusPage, resp)
+	config.statusPageModel = mapStatusPageToModel(ctx, statusPage, resp)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	config.statusPageModel = mappedModel
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
