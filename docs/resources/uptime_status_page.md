@@ -30,6 +30,7 @@ resource "phare_uptime_status_page" "main" {
   subdomain             = "example" # example.status.phare.io
   domain                = "status.example.com"
   timeframe             = 30
+  show_response_times   = true
   logo_light            = "${path.module}/assets/logo-light.png"
   logo_dark             = "${path.module}/assets/logo-dark.png"
   favicon_light         = "${path.module}/assets/favicon.png"
@@ -73,6 +74,7 @@ resource "phare_uptime_status_page" "main" {
     {
       componentable_type = "uptime/monitor"
       componentable_id   = data.phare_uptime_monitor.web.id
+      display_name       = "Marketing Website"
     },
     {
       componentable_type = "uptime/group"
@@ -82,6 +84,7 @@ resource "phare_uptime_status_page" "main" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = data.phare_uptime_monitor.api.id
+          display_name       = "API Gateway"
         }
       ]
     }
@@ -120,6 +123,7 @@ resource "phare_uptime_status_page" "main" {
 - `logo_dark` (String) Path to dark theme logo image file (jpeg/png/svg). Remove attribute to delete logo.
 - `logo_light` (String) Path to light theme logo image file (jpeg/png/svg). Remove attribute to delete logo.
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
+- `show_response_times` (Boolean) Whether to display response times for monitors on the status page (default: true)
 - `subscription_channels` (List of String) Subscription channels available (rss, atom, slack)
 - `theme` (Block, Optional) Theme settings to customize the status page (see [below for nested schema](#nestedblock--theme))
 
@@ -143,6 +147,7 @@ Optional:
 
 - `componentable_id` (Number) ID of the component entity to display on the status page (required for uptime/monitor)
 - `components` (Attributes List) List of components shown inside the group (required for uptime/group) (see [below for nested schema](#nestedatt--components--components))
+- `display_name` (String) Custom display name of the monitor on the status page (for uptime/monitor)
 - `is_expanded` (Boolean) Whether the group components are expanded by default (for uptime/group)
 - `name` (String) Name of the component group (required for uptime/group)
 
@@ -153,6 +158,10 @@ Required:
 
 - `componentable_id` (Number) ID of the component entity to display inside the component group
 - `componentable_type` (String) Type of component entity (uptime/monitor)
+
+Optional:
+
+- `display_name` (String) Custom display name of the monitor on the status page
 
 
 

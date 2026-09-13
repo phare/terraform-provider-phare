@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/stretchr/testify/require"
 
 	"terraform-provider-phare/internal/client"
@@ -32,6 +33,26 @@ func TestUptimeStatusPagesDataSource_Schema(t *testing.T) {
 	// Verify schema is not nil
 	require.NotNil(t, resp.Schema)
 	require.NotNil(t, resp.Schema.Attributes)
+
+	// Verify status_pages attribute exists and contains show_response_times and display_name
+	pagesAttr, ok := resp.Schema.Attributes["status_pages"].(schema.ListNestedAttribute)
+	require.True(t, ok)
+
+	showAttr, ok := pagesAttr.NestedObject.Attributes["show_response_times"].(schema.BoolAttribute)
+	require.True(t, ok)
+	require.True(t, showAttr.Computed)
+
+	compAttr, ok := pagesAttr.NestedObject.Attributes["components"].(schema.ListNestedAttribute)
+	require.True(t, ok)
+	topDisplayAttr, ok := compAttr.NestedObject.Attributes["display_name"].(schema.StringAttribute)
+	require.True(t, ok)
+	require.True(t, topDisplayAttr.Computed)
+
+	nestedCompAttr, ok := compAttr.NestedObject.Attributes["components"].(schema.ListNestedAttribute)
+	require.True(t, ok)
+	childDisplayAttr, ok := nestedCompAttr.NestedObject.Attributes["display_name"].(schema.StringAttribute)
+	require.True(t, ok)
+	require.True(t, childDisplayAttr.Computed)
 }
 
 func TestUptimeStatusPagesDataSource_Configure(t *testing.T) {
