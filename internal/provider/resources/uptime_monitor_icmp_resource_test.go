@@ -291,6 +291,21 @@ func TestUptimeMonitorIcmpResource_RequestValidation(t *testing.T) {
 				expectError: true,
 			},
 			{
+				name:        "valid 128 multibyte chars (256 bytes)",
+				val:         types.StringValue(strings.Repeat("é", 128)),
+				expectError: false,
+			},
+			{
+				name:        "valid 255 multibyte chars (510 bytes)",
+				val:         types.StringValue(strings.Repeat("é", 255)),
+				expectError: false,
+			},
+			{
+				name:        "invalid 256 multibyte chars (512 bytes)",
+				val:         types.StringValue(strings.Repeat("é", 256)),
+				expectError: true,
+			},
+			{
 				name:        "null value skipped",
 				val:         types.StringNull(),
 				expectError: false,
@@ -370,6 +385,55 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 			},
 			Request: &IcmpRequestModel{
 				Host: types.StringValue("    "),
+			},
+		}
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags := plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{Plan: plan}, resp)
+
+		require.True(t, resp.Diagnostics.HasError())
+		foundErr := false
+		for _, diagErr := range resp.Diagnostics.Errors() {
+			if diagErr.Summary() == "Invalid Host Length" {
+				foundErr = true
+			}
+		}
+		require.True(t, foundErr)
+	})
+
+	t.Run("multibyte host with 128 chars (256 bytes) allowed in modify plan", func(t *testing.T) {
+		planData := uptimeMonitorIcmpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Name:    types.StringValue("Valid Monitor"),
+				Regions: types.ListNull(types.StringType),
+			},
+			Request: &IcmpRequestModel{
+				Host: types.StringValue(strings.Repeat("é", 128)),
+			},
+		}
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags := plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{Plan: plan}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+	})
+
+	t.Run("multibyte host with 256 chars rejected in modify plan", func(t *testing.T) {
+		planData := uptimeMonitorIcmpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Name:    types.StringValue("Valid Monitor"),
+				Regions: types.ListNull(types.StringType),
+			},
+			Request: &IcmpRequestModel{
+				Host: types.StringValue(strings.Repeat("é", 256)),
 			},
 		}
 

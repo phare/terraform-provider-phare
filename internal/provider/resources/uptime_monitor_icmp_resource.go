@@ -121,8 +121,8 @@ func (r *uptimeMonitorIcmpResource) ModifyPlan(ctx context.Context, req resource
 			"The 'request' block is required for ICMP uptime monitors.",
 		)
 	} else if !plan.Request.Host.IsNull() && !plan.Request.Host.IsUnknown() {
-		trimmedHost := strings.TrimSpace(plan.Request.Host.ValueString())
-		if len(trimmedHost) < 1 || len(trimmedHost) > 255 {
+		trimmedLen := utf8.RuneCountInString(strings.TrimSpace(plan.Request.Host.ValueString()))
+		if trimmedLen < 1 || trimmedLen > 255 {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("request").AtName("host"),
 				"Invalid Host Length",
