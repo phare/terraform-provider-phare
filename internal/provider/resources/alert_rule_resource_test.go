@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"terraform-provider-phare/internal/client"
+	"terraform-provider-phare/internal/provider/helpers"
 )
 
 func TestAlertRuleResource_Metadata(t *testing.T) {
@@ -171,6 +172,47 @@ func TestAlertRuleResource_ModifyPlan(t *testing.T) {
 		require.False(t, resp.Diagnostics.HasError())
 	})
 
+	t.Run("project scope change requires replace", func(t *testing.T) {
+		stateData := alertRuleModel{
+			UptimeAlertRuleModel: UptimeAlertRuleModel{
+				Id:            types.Int64Value(100),
+				Event:         types.StringValue("uptime.monitor.created"),
+				IntegrationId: types.Int64Value(1),
+				RateLimit:     types.Int64Value(60),
+			},
+			ProjectScope: types.DynamicValue(types.StringValue("project-a")),
+			Scope:        types.StringValue("project"),
+		}
+
+		planData := alertRuleModel{
+			UptimeAlertRuleModel: UptimeAlertRuleModel{
+				Id:            types.Int64Value(100),
+				Event:         types.StringValue("uptime.monitor.created"),
+				IntegrationId: types.Int64Value(1),
+				RateLimit:     types.Int64Value(60),
+			},
+			ProjectScope: types.DynamicValue(types.StringValue("project-b")),
+			Scope:        types.StringValue("project"),
+		}
+
+		state := tfsdk.State{Schema: schemaResp.Schema}
+		diags := state.Set(context.Background(), stateData)
+		require.False(t, diags.HasError())
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags = plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{
+			State: state,
+			Plan:  plan,
+		}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		require.True(t, resp.RequiresReplace.Contains(path.Root("project_scope")))
+	})
+
 	testCases := []struct {
 		name                           string
 		eventSettings                  types.String
@@ -274,4 +316,73 @@ func TestAlertRuleResource_ModifyPlan(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAlertRuleResource_ImportState(t *testing.T) {
+	ctx := context.Background()
+	schemaResp := &resource.SchemaResponse{}
+	r := NewAlertRuleResource()
+	r.Schema(ctx, resource.SchemaRequest{}, schemaResp)
+
+	newTestState := func() tfsdk.State {
+		state := tfsdk.State{Schema: schemaResp.Schema}
+		diags := state.Set(ctx, &alertRuleModel{})
+		require.False(t, diags.HasError())
+		return state
+	}
+
+	t.Run("import with integer ID only on project-scoped client", func(t *testing.T) {
+		projectClient, err := client.NewClient("https://api.phare.io", "pha_proj_123", 10*time.Second, "123", "", "1.0", "1.0", true)
+		require.NoError(t, err)
+
+		res := &alertRuleResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: projectClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "456"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model alertRuleModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(456), model.Id.ValueInt64())
+	})
+
+	t.Run("import with project_scope/id slug on org-scoped client", func(t *testing.T) {
+		orgClient, err := client.NewClient("https://api.phare.io", "pha_org_123", 10*time.Second, "", "", "1.0", "1.0", false)
+		require.NoError(t, err)
+
+		res := &alertRuleResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: orgClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "my-project/789"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model alertRuleModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(789), model.Id.ValueInt64())
+		require.Equal(t, "my-project", helpers.GetDynamicStringValue(model.ProjectScope))
+	})
+
+	t.Run("import with ID only on org-scoped client succeeds without scope (requireProjectScope=false)", func(t *testing.T) {
+		orgClient, err := client.NewClient("https://api.phare.io", "pha_org_123", 10*time.Second, "", "", "1.0", "1.0", false)
+		require.NoError(t, err)
+
+		res := &alertRuleResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: orgClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "999"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model alertRuleModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(999), model.Id.ValueInt64())
+	})
 }

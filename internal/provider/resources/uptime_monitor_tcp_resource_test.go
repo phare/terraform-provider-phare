@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"terraform-provider-phare/internal/client"
+	"terraform-provider-phare/internal/provider/helpers"
 )
 
 func validTcpRequestModel() *TcpRequestModel {
@@ -246,9 +247,9 @@ func TestUptimeMonitorTcpResource_RequestValidation(t *testing.T) {
 	reqBlock, ok := resp.Schema.Blocks["request"].(schema.SingleNestedBlock)
 	require.True(t, ok)
 
-	hostAttr, ok := reqBlock.Attributes["host"].(schema.StringAttribute)
+	thostAttr, ok := reqBlock.Attributes["host"].(schema.StringAttribute)
 	require.True(t, ok)
-	require.NotEmpty(t, hostAttr.Validators)
+	require.NotEmpty(t, thostAttr.Validators)
 
 	portAttr, ok := reqBlock.Attributes["port"].(schema.Int64Attribute)
 	require.True(t, ok)
@@ -300,7 +301,7 @@ func TestUptimeMonitorTcpResource_RequestValidation(t *testing.T) {
 				}
 				valResp := &validator.StringResponse{}
 
-				for _, v := range hostAttr.Validators {
+				for _, v := range thostAttr.Validators {
 					v.ValidateString(context.Background(), valReq, valResp)
 				}
 
@@ -447,6 +448,45 @@ func TestUptimeMonitorTcpResource_ModifyPlan(t *testing.T) {
 		require.True(t, foundErr)
 	})
 
+	t.Run("project scope change requires replace", func(t *testing.T) {
+		stateData := uptimeMonitorTcpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Id:           types.Int64Value(100),
+				Name:         types.StringValue("Valid Monitor"),
+				ProjectScope: types.DynamicValue(types.StringValue("project-a")),
+				Regions:      types.ListNull(types.StringType),
+			},
+			Request: validTcpRequestModel(),
+		}
+
+		planData := uptimeMonitorTcpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Id:           types.Int64Value(100),
+				Name:         types.StringValue("Valid Monitor"),
+				ProjectScope: types.DynamicValue(types.StringValue("project-b")),
+				Regions:      types.ListNull(types.StringType),
+			},
+			Request: validTcpRequestModel(),
+		}
+
+		state := tfsdk.State{Schema: schemaResp.Schema}
+		diags := state.Set(context.Background(), stateData)
+		require.False(t, diags.HasError())
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags = plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{
+			State: state,
+			Plan:  plan,
+		}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		require.True(t, resp.RequiresReplace.Contains(path.Root("project_scope")))
+	})
+
 	t.Run("valid plan", func(t *testing.T) {
 		planData := uptimeMonitorTcpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
@@ -515,4 +555,59 @@ func TestUptimeMonitorTcpResource_Configure(t *testing.T) {
 
 	// Verify resource is properly configured
 	require.NotNil(t, r.GetClient())
+}
+
+func TestUptimeMonitorTcpResource_ImportState(t *testing.T) {
+	ctx := context.Background()
+	schemaResp := &resource.SchemaResponse{}
+	r := &uptimeMonitorTcpResource{}
+	r.Schema(ctx, resource.SchemaRequest{}, schemaResp)
+
+	newTestState := func() tfsdk.State {
+		state := tfsdk.State{Schema: schemaResp.Schema}
+		diags := state.Set(ctx, &uptimeMonitorTcpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Regions: types.ListNull(types.StringType),
+			},
+		})
+		require.False(t, diags.HasError())
+		return state
+	}
+
+	t.Run("import with integer ID only on project-scoped client", func(t *testing.T) {
+		projectClient, err := client.NewClient("https://api.phare.io", "pha_proj_123", 10*time.Second, "123", "", "1.0", "1.0", true)
+		require.NoError(t, err)
+
+		res := &uptimeMonitorTcpResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: projectClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "456"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model uptimeMonitorTcpModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(456), model.Id.ValueInt64())
+	})
+
+	t.Run("import with project_scope/id slug on org-scoped client", func(t *testing.T) {
+		orgClient, err := client.NewClient("https://api.phare.io", "pha_org_123", 10*time.Second, "", "", "1.0", "1.0", false)
+		require.NoError(t, err)
+
+		res := &uptimeMonitorTcpResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: orgClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "my-project/789"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model uptimeMonitorTcpModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(789), model.Id.ValueInt64())
+		require.Equal(t, "my-project", helpers.GetDynamicStringValue(model.ProjectScope))
+	})
 }

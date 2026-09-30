@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"terraform-provider-phare/internal/client"
 	"terraform-provider-phare/internal/provider/helpers"
@@ -83,13 +82,7 @@ func UptimeAlertRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Date of last update",
 				MarkdownDescription: "Date of last update",
 			},
-			"project_scope": schema.DynamicAttribute{
-				Description: "Optional. Project scope for this resource. " +
-					"Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., \"my-project\"). " +
-					"Overrides the provider-level project_scope if set. " +
-					"Required when using an organization-scoped API key (starting with pha_org_).",
-				Optional: true,
-			},
+			"project_scope": helpers.ProjectScopeAttribute(),
 		},
 	}
 }
@@ -201,8 +194,8 @@ func (r *alertRuleResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 		return
 	}
 
-	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_alert_rule", &resp.Diagnostics)
+	helpers.CheckProjectScopeRequiresReplace(ctx, req, resp)
 
 	// Validate event_settings JSON
 	if !plan.EventSettings.IsNull() && !plan.EventSettings.IsUnknown() {
@@ -402,6 +395,10 @@ func (r *alertRuleResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	if !helpers.ValidateNoProjectScopeChange(ctx, req.State, req.Plan, &resp.Diagnostics) {
+		return
+	}
+
 	// Get scoped client for this resource
 	scopedClient := r.GetScopedClient(ctx, plan.ProjectScope, "phare_alert_rule", &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -461,15 +458,5 @@ func (r *alertRuleResource) Delete(ctx context.Context, req resource.DeleteReque
 }
 
 func (r *alertRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Parse ID from import string
-	id, err := strconv.ParseInt(req.ID, 10, 64)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Invalid Import ID",
-			"Alert rule ID must be a valid integer: "+err.Error(),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), id)...)
+	helpers.ImportStateWithProjectScope(ctx, req, resp, r.GetClient(), "Alert rule", false)
 }

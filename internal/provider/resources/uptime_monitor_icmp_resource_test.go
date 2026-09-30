@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"terraform-provider-phare/internal/client"
+	"terraform-provider-phare/internal/provider/helpers"
 )
 
 func validIcmpRequestModel() *IcmpRequestModel {
@@ -47,6 +48,11 @@ func TestUptimeMonitorIcmpResource_Schema(t *testing.T) {
 	require.NotNil(t, resp.Schema)
 	require.NotNil(t, resp.Schema.Attributes)
 	require.NotNil(t, resp.Schema.Blocks["request"])
+
+	// Verify project_scope has RequiresReplace plan modifier
+	projectScopeAttr, ok := resp.Schema.Attributes["project_scope"].(schema.DynamicAttribute)
+	require.True(t, ok)
+	require.NotEmpty(t, projectScopeAttr.PlanModifiers)
 }
 
 func TestUptimeMonitorIcmpResource_NameValidation(t *testing.T) {
@@ -265,6 +271,16 @@ func TestUptimeMonitorIcmpResource_RequestValidation(t *testing.T) {
 				expectError: false,
 			},
 			{
+				name:        "valid with surrounding whitespace",
+				val:         types.StringValue("   8.8.8.8   "),
+				expectError: false,
+			},
+			{
+				name:        "invalid whitespace only",
+				val:         types.StringValue("   "),
+				expectError: true,
+			},
+			{
 				name:        "invalid empty string",
 				val:         types.StringValue(""),
 				expectError: true,
@@ -346,6 +362,34 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 		require.True(t, foundReqErr)
 	})
 
+	t.Run("whitespace host rejected", func(t *testing.T) {
+		planData := uptimeMonitorIcmpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Name:    types.StringValue("Valid Monitor"),
+				Regions: types.ListNull(types.StringType),
+			},
+			Request: &IcmpRequestModel{
+				Host: types.StringValue("    "),
+			},
+		}
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags := plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{Plan: plan}, resp)
+
+		require.True(t, resp.Diagnostics.HasError())
+		foundErr := false
+		for _, diagErr := range resp.Diagnostics.Errors() {
+			if diagErr.Summary() == "Invalid Host Length" {
+				foundErr = true
+			}
+		}
+		require.True(t, foundErr)
+	})
+
 	t.Run("whitespace name trimmed under 2 chars", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
@@ -401,6 +445,45 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 		require.True(t, foundErr)
 	})
 
+	t.Run("project scope change requires replace", func(t *testing.T) {
+		stateData := uptimeMonitorIcmpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Id:           types.Int64Value(100),
+				Name:         types.StringValue("Valid Monitor"),
+				ProjectScope: types.DynamicValue(types.StringValue("project-a")),
+				Regions:      types.ListNull(types.StringType),
+			},
+			Request: validIcmpRequestModel(),
+		}
+
+		planData := uptimeMonitorIcmpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Id:           types.Int64Value(100),
+				Name:         types.StringValue("Valid Monitor"),
+				ProjectScope: types.DynamicValue(types.StringValue("project-b")),
+				Regions:      types.ListNull(types.StringType),
+			},
+			Request: validIcmpRequestModel(),
+		}
+
+		state := tfsdk.State{Schema: schemaResp.Schema}
+		diags := state.Set(context.Background(), stateData)
+		require.False(t, diags.HasError())
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags = plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{
+			State: state,
+			Plan:  plan,
+		}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		require.True(t, resp.RequiresReplace.Contains(path.Root("project_scope")))
+	})
+
 	t.Run("valid plan", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
@@ -441,6 +524,25 @@ func TestIcmpRequestModelToClientConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, cfg.Host)
 		require.Equal(t, "1.1.1.1", *cfg.Host)
+	})
+
+	t.Run("whitespace trimmed host", func(t *testing.T) {
+		req := &IcmpRequestModel{
+			Host: types.StringValue("   1.1.1.1   "),
+		}
+		cfg, err := icmpRequestModelToClientConfig(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, cfg.Host)
+		require.Equal(t, "1.1.1.1", *cfg.Host)
+	})
+
+	t.Run("whitespace only host sets nil", func(t *testing.T) {
+		req := &IcmpRequestModel{
+			Host: types.StringValue("    "),
+		}
+		cfg, err := icmpRequestModelToClientConfig(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, cfg.Host)
 	})
 
 	t.Run("null host", func(t *testing.T) {
@@ -487,4 +589,103 @@ func TestUptimeMonitorIcmpResource_Configure(t *testing.T) {
 
 	// Verify resource is properly configured
 	require.NotNil(t, r.GetClient())
+}
+
+func TestUptimeMonitorIcmpResource_ImportState(t *testing.T) {
+	ctx := context.Background()
+	schemaResp := &resource.SchemaResponse{}
+	r := &uptimeMonitorIcmpResource{}
+	r.Schema(ctx, resource.SchemaRequest{}, schemaResp)
+
+	newTestState := func() tfsdk.State {
+		state := tfsdk.State{Schema: schemaResp.Schema}
+		diags := state.Set(ctx, &uptimeMonitorIcmpModel{
+			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Regions: types.ListNull(types.StringType),
+			},
+		})
+		require.False(t, diags.HasError())
+		return state
+	}
+
+	t.Run("import with integer ID only on project-scoped client", func(t *testing.T) {
+		projectClient, err := client.NewClient("https://api.phare.io", "pha_proj_123", 10*time.Second, "123", "", "1.0", "1.0", true)
+		require.NoError(t, err)
+
+		res := &uptimeMonitorIcmpResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: projectClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "456"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model uptimeMonitorIcmpModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(456), model.Id.ValueInt64())
+	})
+
+	t.Run("import with project_scope/id slug on org-scoped client", func(t *testing.T) {
+		orgClient, err := client.NewClient("https://api.phare.io", "pha_org_123", 10*time.Second, "", "", "1.0", "1.0", false)
+		require.NoError(t, err)
+
+		res := &uptimeMonitorIcmpResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: orgClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "my-project/789"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model uptimeMonitorIcmpModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(789), model.Id.ValueInt64())
+		require.Equal(t, "my-project", helpers.GetDynamicStringValue(model.ProjectScope))
+	})
+
+	t.Run("import with project_scope/id integer on org-scoped client", func(t *testing.T) {
+		orgClient, err := client.NewClient("https://api.phare.io", "pha_org_123", 10*time.Second, "", "", "1.0", "1.0", false)
+		require.NoError(t, err)
+
+		res := &uptimeMonitorIcmpResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: orgClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "123/789"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model uptimeMonitorIcmpModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(789), model.Id.ValueInt64())
+		require.Equal(t, "123", helpers.GetDynamicStringValue(model.ProjectScope))
+	})
+
+	t.Run("import without project scope on org-scoped client with no provider scope returns error", func(t *testing.T) {
+		orgClient, err := client.NewClient("https://api.phare.io", "pha_org_123", 10*time.Second, "", "", "1.0", "1.0", false)
+		require.NoError(t, err)
+
+		res := &uptimeMonitorIcmpResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: orgClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "789"}, resp)
+
+		require.True(t, resp.Diagnostics.HasError())
+		require.Equal(t, "Missing Project Scope for Import", resp.Diagnostics.Errors()[0].Summary())
+	})
+
+	t.Run("invalid import ID format", func(t *testing.T) {
+		res := &uptimeMonitorIcmpResource{}
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "a/b/c"}, resp)
+
+		require.True(t, resp.Diagnostics.HasError())
+		require.Equal(t, "Invalid Import ID", resp.Diagnostics.Errors()[0].Summary())
+	})
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -374,13 +373,7 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					stringvalidator.RegexMatches(regexp.MustCompile(`^https?://`), "must be a valid http or https URL"),
 				},
 			},
-			"project_scope": schema.DynamicAttribute{
-				Description: "Optional. Project scope for this resource. " +
-					"Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., \"my-project\"). " +
-					"Overrides the provider-level project_scope if set. " +
-					"Required when using an organization-scoped API key (starting with pha_org_).",
-				Optional: true,
-			},
+			"project_scope": helpers.ProjectScopeAttribute(),
 		},
 		Blocks: map[string]schema.Block{
 			"theme": schema.SingleNestedBlock{
@@ -728,6 +721,8 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_status_page", &resp.Diagnostics)
+
+	helpers.CheckProjectScopeRequiresReplace(ctx, req, resp)
 
 	// Validate trimmed name
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
@@ -1601,6 +1596,10 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
+	if !helpers.ValidateNoProjectScopeChange(ctx, req.State, req.Plan, &resp.Diagnostics) {
+		return
+	}
+
 	// Get scoped client for this resource
 	scopedClient := r.GetScopedClient(ctx, plan.ProjectScope, "phare_uptime_status_page", &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -1802,15 +1801,5 @@ func (r *uptimeStatusPageResource) Delete(ctx context.Context, req resource.Dele
 }
 
 func (r *uptimeStatusPageResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Parse ID from import string
-	id, err := strconv.ParseInt(req.ID, 10, 64)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Invalid Import ID",
-			"Status page ID must be a valid integer: "+err.Error(),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), id)...)
+	helpers.ImportStateWithProjectScope(ctx, req, resp, r.GetClient(), "Status page", true)
 }
