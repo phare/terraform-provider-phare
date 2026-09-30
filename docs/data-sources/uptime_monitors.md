@@ -40,7 +40,7 @@ Read-Only:
 - `one_day_availability` (Number) Availability over the last 24 hours
 - `paused` (Boolean) Whether the monitor is paused
 - `project_id` (Number) Parent project ID
-- `protocol` (String) Monitoring protocol (http, tcp)
+- `protocol` (String) Monitoring protocol (http, tcp, icmp)
 - `recovery_confirmations` (Number) Number of confirmations before marking as recovered
 - `region_threshold` (Number) Number of regions that must fail before an incident is confirmed
 - `regions` (List of String) Regions where monitoring is performed
@@ -61,7 +61,7 @@ Read-Only:
 - `connection` (String) Connection type (for TCP monitors)
 - `follow_redirects` (Boolean) Whether to follow HTTP redirects
 - `headers` (Attributes List) HTTP headers to send with the request (see [below for nested schema](#nestedatt--monitors--request--headers))
-- `host` (String) Host to connect to (for TCP monitors)
+- `host` (String) Host to connect to (for TCP and ICMP monitors)
 - `method` (String) HTTP method (for HTTP monitors)
 - `port` (Number) Port to connect to (for TCP monitors)
 - `tls_skip_verify` (Boolean) Whether to skip TLS certificate verification

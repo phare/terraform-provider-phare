@@ -126,13 +126,7 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			Description:         "Date of last update",
 			MarkdownDescription: "Date of last update",
 		},
-		"project_scope": schema.DynamicAttribute{
-			Description: "Optional. Project scope for this resource. " +
-				"Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., \"my-project\"). " +
-				"Overrides the provider-level project_scope if set. " +
-				"Required when using an organization-scoped API key (starting with pha_org_).",
-			Optional: true,
-		},
+		"project_scope": helpers.ProjectScopeAttribute(),
 	}
 }
 
@@ -300,6 +294,8 @@ func (r *uptimeMonitorTcpResource) ModifyPlan(ctx context.Context, req resource.
 
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_monitor_tcp", &resp.Diagnostics)
+
+	helpers.CheckProjectScopeRequiresReplace(ctx, req, resp)
 
 	// Validate name length after trimming whitespace
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
@@ -587,6 +583,10 @@ func (r *uptimeMonitorTcpResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
+	if !helpers.ValidateNoProjectScopeChange(ctx, req.State, req.Plan, &resp.Diagnostics) {
+		return
+	}
+
 	// Get scoped client for this resource
 	scopedClient := r.GetScopedClient(ctx, plan.ProjectScope, "phare_uptime_monitor_tcp", &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -714,15 +714,5 @@ func (r *uptimeMonitorTcpResource) Delete(ctx context.Context, req resource.Dele
 }
 
 func (r *uptimeMonitorTcpResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Parse ID from import string
-	id, err := strconv.ParseInt(req.ID, 10, 64)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Invalid Import ID",
-			"Monitor ID must be a valid integer: "+err.Error(),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), id)...)
+	helpers.ImportStateWithProjectScope(ctx, req, resp, r.GetClient(), "Monitor", true)
 }

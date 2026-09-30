@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"terraform-provider-phare/internal/client"
+	"terraform-provider-phare/internal/provider/helpers"
 )
 
 func int64Ptr(v int64) *int64 {
@@ -742,6 +743,33 @@ func TestUptimeStatusPageResource_ModifyPlan(t *testing.T) {
 		require.False(t, resp.Diagnostics.HasError())
 	})
 
+	t.Run("project scope change requires replace", func(t *testing.T) {
+		stateData := validStatusPageModel(t)
+		stateData.Id = types.Int64Value(100)
+		stateData.ProjectScope = types.DynamicValue(types.StringValue("project-a"))
+
+		planData := validStatusPageModel(t)
+		planData.Id = types.Int64Value(100)
+		planData.ProjectScope = types.DynamicValue(types.StringValue("project-b"))
+
+		state := tfsdk.State{Schema: schemaResp.Schema}
+		diags := state.Set(context.Background(), stateData)
+		require.False(t, diags.HasError())
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags = plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{
+			State: state,
+			Plan:  plan,
+		}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		require.True(t, resp.RequiresReplace.Contains(path.Root("project_scope")))
+	})
+
 	t.Run("valid plan", func(t *testing.T) {
 		planData := validStatusPageModel(t)
 		plan := tfsdk.Plan{Schema: schemaResp.Schema}
@@ -1118,5 +1146,56 @@ func TestUptimeStatusPageResource_ModifyPlan(t *testing.T) {
 			}
 		}
 		require.True(t, found)
+	})
+}
+
+func TestUptimeStatusPageResource_ImportState(t *testing.T) {
+	ctx := context.Background()
+	schemaResp := &resource.SchemaResponse{}
+	r := &uptimeStatusPageResource{}
+	r.Schema(ctx, resource.SchemaRequest{}, schemaResp)
+
+	newTestState := func() tfsdk.State {
+		state := tfsdk.State{Schema: schemaResp.Schema}
+		diags := state.Set(ctx, validStatusPageModel(t))
+		require.False(t, diags.HasError())
+		return state
+	}
+
+	t.Run("import with integer ID only on project-scoped client", func(t *testing.T) {
+		projectClient, err := client.NewClient("https://api.phare.io", "pha_proj_123", 10*time.Second, "123", "", "1.0", "1.0", true)
+		require.NoError(t, err)
+
+		res := &uptimeStatusPageResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: projectClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "456"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model UptimeStatusPageModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(456), model.Id.ValueInt64())
+	})
+
+	t.Run("import with project_scope/id slug on org-scoped client", func(t *testing.T) {
+		orgClient, err := client.NewClient("https://api.phare.io", "pha_org_123", 10*time.Second, "", "", "1.0", "1.0", false)
+		require.NoError(t, err)
+
+		res := &uptimeStatusPageResource{}
+		res.Configure(ctx, resource.ConfigureRequest{ProviderData: orgClient}, &resource.ConfigureResponse{})
+
+		state := newTestState()
+		resp := &resource.ImportStateResponse{State: state}
+		res.ImportState(ctx, resource.ImportStateRequest{ID: "my-project/789"}, resp)
+
+		require.False(t, resp.Diagnostics.HasError())
+		var model UptimeStatusPageModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &model)...)
+		require.False(t, resp.Diagnostics.HasError())
+		require.Equal(t, int64(789), model.Id.ValueInt64())
+		require.Equal(t, "my-project", helpers.GetDynamicStringValue(model.ProjectScope))
 	})
 }

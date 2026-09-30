@@ -373,6 +373,8 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 	// Validate project scope configuration at plan time
 	r.ValidateProjectScopeAtPlanTime(ctx, plan.ProjectScope, "phare_uptime_monitor_http", &resp.Diagnostics)
 
+	helpers.CheckProjectScopeRequiresReplace(ctx, req, resp)
+
 	// Validate name length after trimming whitespace
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
 		trimmedLen := utf8.RuneCountInString(strings.TrimSpace(plan.Name.ValueString()))
@@ -967,6 +969,10 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
+	if !helpers.ValidateNoProjectScopeChange(ctx, req.State, req.Plan, &resp.Diagnostics) {
+		return
+	}
+
 	// Get scoped client for this resource
 	scopedClient := r.GetScopedClient(ctx, plan.ProjectScope, "phare_uptime_monitor_http", &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -1166,5 +1172,5 @@ func (r *uptimeMonitorHttpResource) Delete(ctx context.Context, req resource.Del
 }
 
 func (r *uptimeMonitorHttpResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	helpers.ImportStateWithProjectScope(ctx, req, resp, r.GetClient(), "Monitor", true)
 }
