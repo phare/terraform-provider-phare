@@ -217,6 +217,7 @@ func (p *phareProvider) Resources(ctx context.Context) []func() resource.Resourc
 		resources.NewAlertRuleResource,
 		resources.NewUptimeMonitorHttpResource,
 		resources.NewUptimeMonitorTcpResource,
+		resources.NewUptimeMonitorIcmpResource,
 		resources.NewUptimeStatusPageResource,
 		resources.NewProjectResource,
 	}

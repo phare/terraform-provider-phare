@@ -147,7 +147,7 @@ func mapMonitorToModel(ctx context.Context, monitor *client.MonitorResponse, res
 		})
 	}
 
-	// TCP fields
+	// TCP / ICMP fields
 	if monitor.Request.Host != nil {
 		requestAttrs["host"] = types.StringValue(*monitor.Request.Host)
 	} else {
@@ -270,7 +270,7 @@ func monitorSchemaAttributes() map[string]schema.Attribute {
 		},
 		"protocol": schema.StringAttribute{
 			Computed:    true,
-			Description: "Monitoring protocol (http, tcp)",
+			Description: "Monitoring protocol (http, tcp, icmp)",
 		},
 		"request": schema.SingleNestedAttribute{
 			Computed:    true,
@@ -317,10 +317,10 @@ func monitorSchemaAttributes() map[string]schema.Attribute {
 						},
 					},
 				},
-				// TCP fields
+				// TCP / ICMP fields
 				"host": schema.StringAttribute{
 					Computed:    true,
-					Description: "Host to connect to (for TCP monitors)",
+					Description: "Host to connect to (for TCP and ICMP monitors)",
 				},
 				"port": schema.Int64Attribute{
 					Computed:    true,
