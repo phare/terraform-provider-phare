@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.16] - 2026-09-30
+
+### Added
+
+- `phare_uptime_monitor_icmp` resource to manage ICMP ping uptime monitors.
+- Support for `<project_scope>/<id>` import syntax on `phare_uptime_monitor_icmp`, `phare_uptime_monitor_http`, `phare_uptime_monitor_tcp`, `phare_uptime_status_page`, and `phare_alert_rule` when using organization-scoped API keys.
+
+### Fixed
+
+- Changing `project_scope` now forces resource replacement across `phare_uptime_monitor_icmp`, `phare_uptime_monitor_http`, `phare_uptime_monitor_tcp`, `phare_uptime_status_page`, and `phare_alert_rule`, preventing invalid update requests targeting IDs from the previous project.
+
 ## [0.0.15] - 2026-09-13
 
 ### Added
