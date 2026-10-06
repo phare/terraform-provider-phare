@@ -48,6 +48,7 @@ type statusPageModel struct {
 	AccessIPs             types.List   `tfsdk:"access_ips"`
 	AccessPasswordEnabled types.Bool   `tfsdk:"access_password_enabled"`
 	AccessTokenEnabled    types.Bool   `tfsdk:"access_token_enabled"`
+	Tags                  types.List   `tfsdk:"tags"`
 	CreatedAt             types.String `tfsdk:"created_at"`
 	UpdatedAt             types.String `tfsdk:"updated_at"`
 }
@@ -286,6 +287,12 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 		return statusPageModel{}
 	}
 
+	// Map tags (null when the API returns none)
+	model.Tags = helpers.StringSliceToList(page.Tags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return statusPageModel{}
+	}
+
 	model.AccessPasswordEnabled = types.BoolValue(page.AccessPasswordEnabled)
 	model.AccessTokenEnabled = types.BoolValue(page.AccessTokenEnabled)
 
@@ -509,6 +516,11 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 			ElementType: types.StringType,
 			Computed:    true,
 			Description: "List of IP addresses or CIDR ranges allowed to access the status page",
+		},
+		"tags": schema.ListAttribute{
+			ElementType: types.StringType,
+			Computed:    true,
+			Description: "Resource tags",
 		},
 		"access_password_enabled": schema.BoolAttribute{
 			Computed:    true,

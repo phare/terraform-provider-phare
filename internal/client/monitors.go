@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/url"
 )
 
 // MonitorRequest represents the request body for creating/updating a monitor.
@@ -17,6 +18,7 @@ type MonitorRequest struct {
 	RecoveryConfirmations int64                    `json:"recovery_confirmations"`
 	RegionThreshold       int64                    `json:"region_threshold"`
 	Regions               []string                 `json:"regions"`
+	Tags                  []string                 `json:"tags"`
 }
 
 // MonitorRequestConfig represents the request configuration for a monitor.
@@ -57,6 +59,7 @@ type MonitorResponse struct {
 	RecoveryConfirmations int64                    `json:"recovery_confirmations"`
 	RegionThreshold       int64                    `json:"region_threshold"`
 	Regions               []string                 `json:"regions"`
+	Tags                  []string                 `json:"tags"`
 	Status                string                   `json:"status"`
 	Paused                bool                     `json:"paused"`
 	ResponseTime          *int64                   `json:"response_time"`
@@ -102,7 +105,7 @@ func (c *Client) DeleteMonitor(ctx context.Context, id int64) error {
 }
 
 // ListMonitors retrieves a paginated list of uptime monitors.
-func (c *Client) ListMonitors(ctx context.Context, page, perPage int) ([]*MonitorResponse, error) {
+func (c *Client) ListMonitors(ctx context.Context, page, perPage int, tags []string) ([]*MonitorResponse, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -113,7 +116,15 @@ func (c *Client) ListMonitors(ctx context.Context, page, perPage int) ([]*Monito
 		perPage = 100
 	}
 
-	path := fmt.Sprintf("/uptime/monitors?page=%d&per_page=%d", page, perPage)
+	params := url.Values{}
+	params.Set("page", fmt.Sprintf("%d", page))
+	params.Set("per_page", fmt.Sprintf("%d", perPage))
+
+	for _, tag := range tags {
+		params.Add("tag", tag)
+	}
+
+	path := fmt.Sprintf("/uptime/monitors?%s", params.Encode())
 
 	var paginatedResp struct {
 		Data  []MonitorResponse `json:"data"`

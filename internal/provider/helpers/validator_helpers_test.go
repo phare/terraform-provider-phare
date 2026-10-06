@@ -97,3 +97,53 @@ func TestTrimmedLengthAtMost(t *testing.T) {
 		})
 	}
 }
+
+func TestTagListValidators(t *testing.T) {
+	validators := TagListValidators()
+	require.NotEmpty(t, validators)
+
+	newList := func(t *testing.T, values ...string) types.List {
+		l, diags := types.ListValueFrom(context.Background(), types.StringType, values)
+		require.False(t, diags.HasError())
+		return l
+	}
+
+	testCases := []struct {
+		name        string
+		val         types.List
+		expectError bool
+	}{
+		{"null is skipped", types.ListNull(types.StringType), false},
+		{"empty list", newList(t), false},
+		{"single tag", newList(t, "environment:production"), false},
+		{"multiple tags", newList(t, "environment:production", "team:backend"), false},
+		{"unicode letters and numbers", newList(t, "café-1", "日本語_2", "ก.3"), false},
+		{"exactly 20 tags", newList(t, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t"), false},
+		{"exceeds 20 tags", newList(t, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u"), true},
+		{"duplicate tags", newList(t, "same", "same"), true},
+		{"tag with space", newList(t, "prod env"), true},
+		{"tag with comma", newList(t, "a,b"), true},
+		{"tag with slash", newList(t, "a/b"), true},
+		{"empty tag", newList(t, ""), true},
+		{"exceeds 100 characters", newList(t, strings.Repeat("a", 101)), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.ListRequest{
+				Path:        path.Root("tags"),
+				ConfigValue: tc.val,
+			}
+			resp := &validator.ListResponse{}
+			for _, v := range validators {
+				v.ValidateList(context.Background(), req, resp)
+			}
+
+			if tc.expectError {
+				require.True(t, resp.Diagnostics.HasError())
+			} else {
+				require.False(t, resp.Diagnostics.HasError())
+			}
+		})
+	}
+}

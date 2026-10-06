@@ -79,4 +79,5 @@ resource "phare_uptime_status_page" "main" {
   access_password = "supersecret"
   access_token    = "mytoken"
   access_ips      = ["192.168.1.0/24", "10.0.0.1"]
+  tags            = ["environment:production"]
 }

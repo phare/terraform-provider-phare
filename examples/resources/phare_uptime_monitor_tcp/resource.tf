@@ -14,4 +14,5 @@ resource "phare_uptime_monitor_tcp" "service" {
   recovery_confirmations = 3
   region_threshold       = 1
   regions                = ["eu-fra-cdg"]
+  tags                   = ["environment:production", "team:backend"]
 }

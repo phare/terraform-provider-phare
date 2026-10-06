@@ -3,9 +3,12 @@ package helpers
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
@@ -74,4 +77,19 @@ func (v trimmedLengthAtMostValidator) ValidateString(ctx context.Context, req va
 // TrimmedLengthAtMost returns a validator that checks maximum string character length after trimming whitespace.
 func TrimmedLengthAtMost(max int) validator.String {
 	return trimmedLengthAtMostValidator{max: max}
+}
+
+// tagValuePattern matches a valid resource tag: Unicode letters, numbers, and . _ : - characters.
+var tagValuePattern = regexp.MustCompile(`^[\p{L}\p{N}._:-]+$`)
+
+// TagListValidators returns the shared validators for the tags list attribute.
+func TagListValidators() []validator.List {
+	return []validator.List{
+		listvalidator.SizeAtMost(20),
+		listvalidator.UniqueValues(),
+		listvalidator.ValueStringsAre(
+			TrimmedLengthBetween(1, 100),
+			stringvalidator.RegexMatches(tagValuePattern, "must contain only Unicode letters, numbers, and . _ : - characters"),
+		),
+	}
 }

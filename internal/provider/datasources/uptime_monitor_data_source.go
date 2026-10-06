@@ -46,6 +46,7 @@ type monitorModel struct {
 	RegionThreshold       types.Int64   `tfsdk:"region_threshold"`
 	Regions               types.List    `tfsdk:"regions"`
 	Status                types.String  `tfsdk:"status"`
+	Tags                  types.List    `tfsdk:"tags"`
 	Paused                types.Bool    `tfsdk:"paused"`
 	ResponseTime          types.Int64   `tfsdk:"response_time"`
 	OneDayAvailability    types.Float64 `tfsdk:"one_day_availability"`
@@ -233,6 +234,8 @@ func mapMonitorToModel(ctx context.Context, monitor *client.MonitorResponse, res
 	}
 	model.Regions = regionsList
 
+	model.Tags = helpers.StringSliceToList(monitor.Tags, &resp.Diagnostics)
+
 	// Map optional statistics
 	if monitor.ResponseTime != nil {
 		model.ResponseTime = types.Int64Value(*monitor.ResponseTime)
@@ -360,6 +363,11 @@ func monitorSchemaAttributes() map[string]schema.Attribute {
 			ElementType: types.StringType,
 			Computed:    true,
 			Description: "Regions where monitoring is performed",
+		},
+		"tags": schema.ListAttribute{
+			ElementType: types.StringType,
+			Computed:    true,
+			Description: "Resource tags",
 		},
 		"status": schema.StringAttribute{
 			Computed:    true,

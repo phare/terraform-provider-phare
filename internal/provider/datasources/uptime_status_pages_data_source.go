@@ -27,6 +27,7 @@ type uptimeStatusPagesDataSource struct {
 
 // uptimeStatusPagesDataSourceModel describes the data source data model.
 type uptimeStatusPagesDataSourceModel struct {
+	Tags         types.List        `tfsdk:"tags"`
 	StatusPages  []statusPageModel `tfsdk:"status_pages"`
 	ProjectScope types.Dynamic     `tfsdk:"project_scope"`
 }
@@ -37,7 +38,7 @@ func (d *uptimeStatusPagesDataSource) Metadata(ctx context.Context, req datasour
 
 func (d *uptimeStatusPagesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Fetches a list of status pages.",
+		Description: "Fetches a list of status pages, optionally filtered by tags.",
 		Attributes: map[string]schema.Attribute{
 			"project_scope": schema.DynamicAttribute{
 				Description: "Optional. Project scope for this data source. " +
@@ -45,6 +46,13 @@ func (d *uptimeStatusPagesDataSource) Schema(ctx context.Context, req datasource
 					"Overrides the provider-level project_scope if set. " +
 					"Required when using an organization-scoped API key (starting with pha_org_).",
 				Optional: true,
+			},
+			"tags": schema.ListAttribute{
+				ElementType:         types.StringType,
+				Optional:            true,
+				Description:         "List of tags to filter status pages. If not specified, returns all status pages (first page, up to 100 status pages).",
+				MarkdownDescription: "List of tags to filter status pages. If not specified, returns all status pages (first page, up to 100 status pages).",
+				Validators:          helpers.TagListValidators(),
 			},
 			"status_pages": schema.ListNestedAttribute{
 				Computed:    true,
@@ -72,8 +80,17 @@ func (d *uptimeStatusPagesDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
+	// Extract tags filter (nil when not set)
+	var tags []string
+	if !config.Tags.IsNull() && len(config.Tags.Elements()) > 0 {
+		resp.Diagnostics.Append(config.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	// Fetch all status pages (first 100 for MVP)
-	statusPages, err := scopedClient.ListStatusPages(ctx, 1, 100)
+	statusPages, err := scopedClient.ListStatusPages(ctx, 1, 100, tags)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read Status Pages",

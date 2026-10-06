@@ -716,6 +716,14 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
+	var tags []string
+	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	// Convert request object
 	reqConfig, err := httpRequestModelToClientConfig(ctx, plan.Request)
 	if err != nil {
@@ -806,6 +814,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 		RecoveryConfirmations: plan.RecoveryConfirmations.ValueInt64(),
 		RegionThreshold:       plan.RegionThreshold.ValueInt64(),
 		SuccessAssertions:     successAssertions,
+		Tags:                  tags,
 	}
 
 	// Call API to create monitor
@@ -863,6 +872,11 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 	plan.Regions = regionsList
+
+	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	plan.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	plan.UpdatedAt = types.StringValue(apiResp.UpdatedAt)
@@ -946,6 +960,11 @@ func (r *uptimeMonitorHttpResource) Read(ctx context.Context, req resource.ReadR
 	}
 	state.Regions = regionsList
 
+	state.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	state.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	state.UpdatedAt = types.StringValue(apiResp.UpdatedAt)
 
@@ -984,6 +1003,14 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	resp.Diagnostics.Append(plan.Regions.ElementsAs(ctx, &regions, false)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	var tags []string
+	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	// Convert request object
@@ -1076,6 +1103,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 		RecoveryConfirmations: plan.RecoveryConfirmations.ValueInt64(),
 		RegionThreshold:       plan.RegionThreshold.ValueInt64(),
 		SuccessAssertions:     successAssertions,
+		Tags:                  tags,
 	}
 
 	// Call API to update monitor using ID from current state
@@ -1133,6 +1161,11 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 	plan.Regions = regionsList
+
+	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	plan.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	plan.UpdatedAt = types.StringValue(apiResp.UpdatedAt)

@@ -22,6 +22,31 @@ func TestUptimeMonitorDataSource_Metadata(t *testing.T) {
 	require.Equal(t, "phare_uptime_monitor", resp.TypeName)
 }
 
+func TestMapMonitorToModel_Tags(t *testing.T) {
+	resp := &datasource.ReadResponse{}
+
+	monitor := &client.MonitorResponse{
+		ID:        1,
+		ProjectID: 1,
+		Name:      "mon",
+		Protocol:  "http",
+		Regions:   []string{"eu-fra-cdg"},
+		Tags:      []string{"environment:production", "team:backend"},
+	}
+
+	model := mapMonitorToModel(context.Background(), monitor, resp)
+	require.False(t, resp.Diagnostics.HasError())
+
+	var tags []string
+	require.False(t, model.Tags.ElementsAs(context.Background(), &tags, false).HasError())
+	require.Equal(t, []string{"environment:production", "team:backend"}, tags)
+
+	monitor.Tags = nil
+	model = mapMonitorToModel(context.Background(), monitor, resp)
+	require.False(t, resp.Diagnostics.HasError())
+	require.True(t, model.Tags.IsNull())
+}
+
 func TestUptimeMonitorDataSource_Schema(t *testing.T) {
 	d := NewUptimeMonitorDataSource()
 	req := datasource.SchemaRequest{}

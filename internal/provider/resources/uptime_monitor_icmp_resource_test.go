@@ -354,6 +354,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 	t.Run("missing request", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:    types.ListNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -380,6 +381,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 	t.Run("whitespace host rejected", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:    types.ListNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -408,6 +410,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 	t.Run("multibyte host with 128 chars (256 bytes) allowed in modify plan", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:    types.ListNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -429,6 +432,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 	t.Run("multibyte host with 256 chars rejected in modify plan", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:    types.ListNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -457,6 +461,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 	t.Run("whitespace name trimmed under 2 chars", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:    types.ListNull(types.StringType),
 				Name:    types.StringValue("  a  "),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -483,6 +488,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 	t.Run("region threshold exceeds regions length", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:            types.ListNull(types.StringType),
 				Name:            types.StringValue("Valid Monitor"),
 				RegionThreshold: types.Int64Value(3),
 				Regions: types.ListValueMust(types.StringType, []attr.Value{
@@ -512,6 +518,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 	t.Run("project scope change requires replace", func(t *testing.T) {
 		stateData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:         types.ListNull(types.StringType),
 				Id:           types.Int64Value(100),
 				Name:         types.StringValue("Valid Monitor"),
 				ProjectScope: types.DynamicValue(types.StringValue("project-a")),
@@ -522,6 +529,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:         types.ListNull(types.StringType),
 				Id:           types.Int64Value(100),
 				Name:         types.StringValue("Valid Monitor"),
 				ProjectScope: types.DynamicValue(types.StringValue("project-b")),
@@ -551,6 +559,7 @@ func TestUptimeMonitorIcmpResource_ModifyPlan(t *testing.T) {
 	t.Run("valid plan", func(t *testing.T) {
 		planData := uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:            types.ListNull(types.StringType),
 				Name:            types.StringValue("Valid Monitor"),
 				RegionThreshold: types.Int64Value(1),
 				Regions: types.ListValueMust(types.StringType, []attr.Value{
@@ -665,6 +674,7 @@ func TestUptimeMonitorIcmpResource_ImportState(t *testing.T) {
 		state := tfsdk.State{Schema: schemaResp.Schema}
 		diags := state.Set(ctx, &uptimeMonitorIcmpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+				Tags:    types.ListNull(types.StringType),
 				Regions: types.ListNull(types.StringType),
 			},
 		})

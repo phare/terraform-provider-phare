@@ -48,6 +48,7 @@ data "phare_uptime_monitor" "web" {
 - `seven_days_availability` (Number) Availability over the last 7 days
 - `status` (String) Current monitor status
 - `success_assertions` (String) Success assertions as JSON
+- `tags` (List of String) Resource tags
 - `timeout` (Number) Monitoring timeout in milliseconds
 - `updated_at` (String) Last update timestamp
 

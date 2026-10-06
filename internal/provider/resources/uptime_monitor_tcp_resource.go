@@ -39,6 +39,7 @@ type UptimeMonitorBaseModel struct {
 	RegionThreshold       types.Int64   `tfsdk:"region_threshold"`
 	Regions               types.List    `tfsdk:"regions"`
 	Status                types.String  `tfsdk:"status"`
+	Tags                  types.List    `tfsdk:"tags"`
 	Timeout               types.Int64   `tfsdk:"timeout"`
 	UpdatedAt             types.String  `tfsdk:"updated_at"`
 	ProjectScope          types.Dynamic `tfsdk:"project_scope"`
@@ -115,6 +116,13 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			Computed:            true,
 			Description:         "Monitor status",
 			MarkdownDescription: "Monitor status",
+		},
+		"tags": schema.ListAttribute{
+			ElementType:         types.StringType,
+			Optional:            true,
+			Description:         "Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)",
+			MarkdownDescription: "Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)",
+			Validators:          helpers.TagListValidators(),
 		},
 		"timeout": schema.Int64Attribute{
 			Required:            true,
@@ -421,6 +429,15 @@ func (r *uptimeMonitorTcpResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
+	// Convert tags List to []string (nil when unset so the API clears tags)
+	var tags []string
+	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	// Convert request object
 	reqConfig, err := tcpRequestModelToClientConfig(ctx, plan.Request)
 	if err != nil {
@@ -442,6 +459,7 @@ func (r *uptimeMonitorTcpResource) Create(ctx context.Context, req resource.Crea
 		RecoveryConfirmations: plan.RecoveryConfirmations.ValueInt64(),
 		RegionThreshold:       plan.RegionThreshold.ValueInt64(),
 		SuccessAssertions:     nil, // TCP monitors don't have success assertions
+		Tags:                  tags,
 	}
 
 	// Call API to create monitor
@@ -488,6 +506,11 @@ func (r *uptimeMonitorTcpResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 	plan.Regions = regionsList
+
+	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	plan.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	plan.UpdatedAt = types.StringValue(apiResp.UpdatedAt)
@@ -560,6 +583,11 @@ func (r *uptimeMonitorTcpResource) Read(ctx context.Context, req resource.ReadRe
 	}
 	state.Regions = regionsList
 
+	state.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	state.CreatedAt = types.StringValue(apiResp.CreatedAt)
 	state.UpdatedAt = types.StringValue(apiResp.UpdatedAt)
 
@@ -600,6 +628,14 @@ func (r *uptimeMonitorTcpResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
+	var tags []string
+	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	// Convert request object
 	reqConfig, err := tcpRequestModelToClientConfig(ctx, plan.Request)
 	if err != nil {
@@ -621,6 +657,7 @@ func (r *uptimeMonitorTcpResource) Update(ctx context.Context, req resource.Upda
 		RecoveryConfirmations: plan.RecoveryConfirmations.ValueInt64(),
 		RegionThreshold:       plan.RegionThreshold.ValueInt64(),
 		SuccessAssertions:     nil, // TCP monitors don't have success assertions
+		Tags:                  tags,
 	}
 
 	// Call API to update monitor using ID from current state
@@ -665,6 +702,11 @@ func (r *uptimeMonitorTcpResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 	plan.Regions = regionsList
+
+	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Update state from API response
 	plan.Id = types.Int64Value(apiResp.ID)
