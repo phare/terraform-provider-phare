@@ -149,6 +149,14 @@ func (r *uptimeMonitorIcmpResource) buildAPIRequest(ctx context.Context, plan *u
 		return nil, false
 	}
 
+	var tags []string
+	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		diags.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+		if diags.HasError() {
+			return nil, false
+		}
+	}
+
 	reqConfig, err := icmpRequestModelToClientConfig(ctx, plan.Request)
 	if err != nil {
 		diags.AddError(
@@ -168,6 +176,7 @@ func (r *uptimeMonitorIcmpResource) buildAPIRequest(ctx context.Context, plan *u
 		IncidentConfirmations: plan.IncidentConfirmations.ValueInt64(),
 		RecoveryConfirmations: plan.RecoveryConfirmations.ValueInt64(),
 		RegionThreshold:       plan.RegionThreshold.ValueInt64(),
+		Tags:                  tags,
 	}, true
 }
 
@@ -205,6 +214,8 @@ func updateIcmpModelFromResponse(ctx context.Context, apiResp *client.MonitorRes
 		return
 	}
 	model.Regions = regionsList
+
+	model.Tags = helpers.StringSliceToSet(apiResp.Tags, model.Tags, diags)
 }
 
 func icmpRequestModelToClientConfig(ctx context.Context, request *IcmpRequestModel) (client.MonitorRequestConfig, error) {

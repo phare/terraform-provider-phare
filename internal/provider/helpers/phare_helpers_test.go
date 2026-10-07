@@ -7,6 +7,8 @@ import (
 
 	"terraform-provider-phare/internal/client"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -290,5 +292,40 @@ func TestImportStateWithProjectScope(t *testing.T) {
 
 		require.True(t, resp.Diagnostics.HasError())
 		require.Equal(t, "Invalid Import ID", resp.Diagnostics.Errors()[0].Summary())
+	})
+}
+
+func TestStringSliceToSet(t *testing.T) {
+	newSet := func(t *testing.T, values ...string) types.Set {
+		s, diags := types.SetValueFrom(context.Background(), types.StringType, values)
+		require.False(t, diags.HasError())
+		return s
+	}
+	toSet := func(values []string, previous types.Set) types.Set {
+		var diags diag.Diagnostics
+		s := StringSliceToSet(values, previous, &diags)
+		require.False(t, diags.HasError())
+		return s
+	}
+
+	t.Run("values produce an order-independent set", func(t *testing.T) {
+		set := toSet([]string{"tfacc:tcp-tags-test", "environment:production"}, types.SetNull(types.StringType))
+		require.True(t, set.Equal(newSet(t, "environment:production", "tfacc:tcp-tags-test")))
+	})
+
+	t.Run("empty values preserve a null previous value", func(t *testing.T) {
+		require.True(t, toSet(nil, types.SetNull(types.StringType)).IsNull())
+	})
+
+	t.Run("empty values preserve an empty previous value", func(t *testing.T) {
+		set := toSet(nil, types.SetValueMust(types.StringType, nil))
+		require.False(t, set.IsNull())
+		require.Equal(t, 0, len(set.Elements()))
+	})
+
+	t.Run("empty values with a previously populated value", func(t *testing.T) {
+		set := toSet(nil, newSet(t, "environment:production"))
+		require.False(t, set.IsNull())
+		require.Equal(t, 0, len(set.Elements()))
 	})
 }

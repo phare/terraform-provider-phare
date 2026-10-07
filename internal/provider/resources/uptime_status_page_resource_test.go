@@ -131,6 +131,7 @@ func validStatusPageModel(t *testing.T) UptimeStatusPageModel {
 		ShowResponseTimes:     types.BoolValue(true),
 		Subdomain:             types.StringValue("status-page"),
 		SubscriptionChannels:  types.ListNull(types.StringType),
+		Tags:                  types.SetNull(types.StringType),
 		Theme:                 types.ObjectNull(ThemeModelAttrTypes),
 		Timeframe:             types.Int64Value(30),
 		Title:                 types.StringValue("Status Page Title"),
@@ -161,6 +162,19 @@ func TestUptimeStatusPageResource_Schema(t *testing.T) {
 
 	require.NotNil(t, resp.Schema)
 	require.NotNil(t, resp.Schema.Attributes)
+}
+
+func TestUptimeStatusPageResource_TagsSchema(t *testing.T) {
+	r := NewUptimeStatusPageResource()
+	resp := &resource.SchemaResponse{}
+	r.Schema(context.Background(), resource.SchemaRequest{}, resp)
+
+	tagsAttr, ok := resp.Schema.Attributes["tags"].(schema.SetAttribute)
+	require.True(t, ok)
+	require.True(t, tagsAttr.Optional)
+	require.False(t, tagsAttr.Computed)
+	require.Equal(t, types.StringType, tagsAttr.ElementType)
+	require.NotEmpty(t, tagsAttr.Validators)
 }
 
 func TestUptimeStatusPageResource_Configure(t *testing.T) {

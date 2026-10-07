@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
+	"strings"
 )
 
 // StatusPageRequest represents the request body for creating/updating a status page.
@@ -24,6 +26,7 @@ type StatusPageRequest struct {
 	AccessToken          *string               `json:"access_token,omitempty"`
 	AccessPassword       *string               `json:"access_password,omitempty"`
 	ShowResponseTimes    *bool                 `json:"show_response_times,omitempty"`
+	Tags                 []string              `json:"tags"`
 }
 
 // StatusPageTheme represents theme customization for a status page.
@@ -78,6 +81,7 @@ type StatusPageResponse struct {
 	AccessIPs             []string              `json:"access_ips,omitempty"`
 	AccessPasswordEnabled bool                  `json:"access_password_enabled"`
 	AccessTokenEnabled    bool                  `json:"access_token_enabled"`
+	Tags                  []string              `json:"tags"`
 	CreatedAt             string                `json:"created_at"`
 	UpdatedAt             string                `json:"updated_at"`
 }
@@ -119,7 +123,7 @@ func (c *Client) DeleteStatusPage(ctx context.Context, id int64) error {
 }
 
 // ListStatusPages retrieves a paginated list of status pages.
-func (c *Client) ListStatusPages(ctx context.Context, page, perPage int) ([]*StatusPageResponse, error) {
+func (c *Client) ListStatusPages(ctx context.Context, page, perPage int, tags []string) ([]*StatusPageResponse, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -130,7 +134,15 @@ func (c *Client) ListStatusPages(ctx context.Context, page, perPage int) ([]*Sta
 		perPage = 100
 	}
 
-	path := fmt.Sprintf("/uptime/status-pages?page=%d&per_page=%d", page, perPage)
+	params := url.Values{}
+	params.Set("page", fmt.Sprintf("%d", page))
+	params.Set("per_page", fmt.Sprintf("%d", perPage))
+
+	for _, tag := range tags {
+		params.Add("tag", tag)
+	}
+
+	path := fmt.Sprintf("/uptime/status-pages?%s", params.Encode())
 
 	var paginatedResp struct {
 		Data  []StatusPageResponse `json:"data"`
@@ -238,6 +250,9 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 	for i, ip := range req.AccessIPs {
 		fields = append(fields, FormField{fmt.Sprintf("access_ips[%d]", i), ip})
 	}
+
+	// Add tags as a single comma-separated field (same convention as the users email filter)
+	fields = append(fields, FormField{"tags", strings.Join(req.Tags, ",")})
 
 	// Add access token and password if provided
 	if req.AccessToken != nil {

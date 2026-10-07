@@ -3,7 +3,6 @@ package datasources
 import (
 	"context"
 	"fmt"
-	"maps"
 
 	"terraform-provider-phare/internal/provider/helpers"
 
@@ -111,8 +110,12 @@ func (d *alertRuleDataSource) Schema(ctx context.Context, req datasource.SchemaR
 		},
 	}
 
-	// Add the common alert rule attributes
-	maps.Copy(resp.Schema.Attributes, alertRuleSchemaAttributes())
+	// Add the common alert rule attributes (skip id as it's already defined above)
+	for key, attr := range alertRuleSchemaAttributes() {
+		if key != "id" {
+			resp.Schema.Attributes[key] = attr
+		}
+	}
 }
 
 func (d *alertRuleDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {

@@ -27,6 +27,7 @@ type uptimeMonitorsDataSource struct {
 
 // uptimeMonitorsDataSourceModel describes the data source data model.
 type uptimeMonitorsDataSourceModel struct {
+	Tags         types.List     `tfsdk:"tags"`
 	Monitors     []monitorModel `tfsdk:"monitors"`
 	ProjectScope types.Dynamic  `tfsdk:"project_scope"`
 }
@@ -37,7 +38,7 @@ func (d *uptimeMonitorsDataSource) Metadata(ctx context.Context, req datasource.
 
 func (d *uptimeMonitorsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Fetches a list of uptime monitors.",
+		Description: "Fetches a list of uptime monitors, optionally filtered by tags.",
 		Attributes: map[string]schema.Attribute{
 			"project_scope": schema.DynamicAttribute{
 				Description: "Optional. Project scope for this data source. " +
@@ -45,6 +46,13 @@ func (d *uptimeMonitorsDataSource) Schema(ctx context.Context, req datasource.Sc
 					"Overrides the provider-level project_scope if set. " +
 					"Required when using an organization-scoped API key (starting with pha_org_).",
 				Optional: true,
+			},
+			"tags": schema.ListAttribute{
+				ElementType:         types.StringType,
+				Optional:            true,
+				Description:         "List of tags to filter monitors. If not specified, returns all monitors (first page, up to 100 monitors).",
+				MarkdownDescription: "List of tags to filter monitors. If not specified, returns all monitors (first page, up to 100 monitors).",
+				Validators:          helpers.TagListValidators(),
 			},
 			"monitors": schema.ListNestedAttribute{
 				Computed:    true,
@@ -72,8 +80,17 @@ func (d *uptimeMonitorsDataSource) Read(ctx context.Context, req datasource.Read
 		return
 	}
 
+	// Extract tags filter (nil when not set)
+	var tags []string
+	if !config.Tags.IsNull() && len(config.Tags.Elements()) > 0 {
+		resp.Diagnostics.Append(config.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	// Fetch all monitors (first 100 for MVP)
-	monitors, err := scopedClient.ListMonitors(ctx, 1, 100)
+	monitors, err := scopedClient.ListMonitors(ctx, 1, 100, tags)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read Monitors",
@@ -83,6 +100,7 @@ func (d *uptimeMonitorsDataSource) Read(ctx context.Context, req datasource.Read
 	}
 
 	// Map API response to state using shared helper
+	config.Monitors = make([]monitorModel, 0, len(monitors))
 	for _, monitor := range monitors {
 		monitorState := mapMonitorToModel(ctx, monitor, resp)
 		if resp.Diagnostics.HasError() {

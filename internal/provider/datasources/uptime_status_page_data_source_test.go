@@ -35,6 +35,11 @@ func TestUptimeStatusPageDataSource_Schema(t *testing.T) {
 	require.NotNil(t, resp.Schema)
 	require.NotNil(t, resp.Schema.Attributes)
 
+	idAttr, ok := resp.Schema.Attributes["id"].(schema.Int64Attribute)
+	require.True(t, ok)
+	require.True(t, idAttr.Required)
+	require.False(t, idAttr.Computed)
+
 	// Verify show_response_times exists
 	showAttr, ok := resp.Schema.Attributes["show_response_times"].(schema.BoolAttribute)
 	require.True(t, ok)

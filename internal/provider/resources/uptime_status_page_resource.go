@@ -88,6 +88,7 @@ type UptimeStatusPageModel struct {
 	ShowResponseTimes     types.Bool    `tfsdk:"show_response_times"`
 	Subdomain             types.String  `tfsdk:"subdomain"`
 	SubscriptionChannels  types.List    `tfsdk:"subscription_channels"`
+	Tags                  types.Set     `tfsdk:"tags"`
 	Theme                 types.Object  `tfsdk:"theme"`
 	Timeframe             types.Int64   `tfsdk:"timeframe"`
 	Title                 types.String  `tfsdk:"title"`
@@ -336,6 +337,13 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					listvalidator.UniqueValues(),
 					listvalidator.ValueStringsAre(stringvalidator.OneOf("rss", "atom", "slack")),
 				},
+			},
+			"tags": schema.SetAttribute{
+				ElementType:         types.StringType,
+				Optional:            true,
+				Description:         "Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)",
+				MarkdownDescription: "Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)",
+				Validators:          helpers.TagSetValidators(),
 			},
 			"timeframe": schema.Int64Attribute{
 				Required:            true,
@@ -1378,6 +1386,16 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 		apiReq.AccessIPs = accessIPs
 	}
 
+	// Add tags if specified
+	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		var tags []string
+		resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		apiReq.Tags = tags
+	}
+
 	// Add access token and password if specified
 	if !plan.AccessToken.IsNull() && !plan.AccessToken.IsUnknown() {
 		token := plan.AccessToken.ValueString()
@@ -1456,6 +1474,12 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 
 	// Map access IPs from API response
 	plan.AccessIPs = helpers.StringSliceToList(apiResp.AccessIPs, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Map tags from API response
+	plan.Tags = helpers.StringSliceToSet(apiResp.Tags, plan.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -1571,6 +1595,12 @@ func (r *uptimeStatusPageResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
+	// Map tags from API response
+	state.Tags = helpers.StringSliceToSet(apiResp.Tags, state.Tags, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Map access enabled flags from API response (token/password values are write-only and not returned)
 	state.AccessPasswordEnabled = types.BoolValue(apiResp.AccessPasswordEnabled)
 	state.AccessTokenEnabled = types.BoolValue(apiResp.AccessTokenEnabled)
@@ -1669,6 +1699,16 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 		apiReq.AccessIPs = accessIPs
 	}
 
+	// Add tags if specified
+	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
+		var tags []string
+		resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		apiReq.Tags = tags
+	}
+
 	// Add access token and password if specified
 	if !plan.AccessToken.IsNull() && !plan.AccessToken.IsUnknown() {
 		token := plan.AccessToken.ValueString()
@@ -1747,6 +1787,12 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 
 	// Map access IPs from API response
 	plan.AccessIPs = helpers.StringSliceToList(apiResp.AccessIPs, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Map tags from API response
+	plan.Tags = helpers.StringSliceToSet(apiResp.Tags, plan.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

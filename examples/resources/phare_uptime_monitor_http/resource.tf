@@ -49,4 +49,6 @@ resource "phare_uptime_monitor_http" "website" {
       value    = "Error"
     }
   }
+
+  tags = ["environment:production", "team:backend"]
 }
