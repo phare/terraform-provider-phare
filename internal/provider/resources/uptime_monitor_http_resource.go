@@ -873,7 +873,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 	}
 	plan.Regions = regionsList
 
-	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	plan.Tags = helpers.StringSliceToSet(apiResp.Tags, plan.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -960,7 +960,7 @@ func (r *uptimeMonitorHttpResource) Read(ctx context.Context, req resource.ReadR
 	}
 	state.Regions = regionsList
 
-	state.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	state.Tags = helpers.StringSliceToSet(apiResp.Tags, state.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -1162,7 +1162,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	}
 	plan.Regions = regionsList
 
-	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	plan.Tags = helpers.StringSliceToSet(apiResp.Tags, plan.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

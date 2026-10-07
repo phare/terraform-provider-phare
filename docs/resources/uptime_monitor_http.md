@@ -87,7 +87,7 @@ resource "phare_uptime_monitor_http" "website" {
 - `region_threshold` (Number) Number of regions that must fail before an incident is confirmed (1-10)
 - `request` (Block, Optional) HTTP/HTTPS request configuration (see [below for nested schema](#nestedblock--request))
 - `success_assertions` (Block, Optional) List of assertions that must be true for the check to be considered successful, [see docs](https://docs.phare.io/uptime/monitors#success-assertions) (see [below for nested schema](#nestedblock--success_assertions))
-- `tags` (List of String) Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)
+- `tags` (Set of String) Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)
 
 ### Read-Only
 

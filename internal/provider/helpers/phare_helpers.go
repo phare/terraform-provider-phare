@@ -279,6 +279,26 @@ func StringSliceToList(values []string, diagnostics *diag.Diagnostics) types.Lis
 	return list
 }
 
+// StringSliceToSet converts a []string to a types.Set of StringType.
+// An empty slice produces a null set when the previous value was null
+func StringSliceToSet(values []string, previous types.Set, diagnostics *diag.Diagnostics) types.Set {
+	if len(values) == 0 {
+		if previous.IsNull() {
+			return types.SetNull(types.StringType)
+		}
+		return types.SetValueMust(types.StringType, nil)
+	}
+
+	elements := make([]attr.Value, len(values))
+	for i, v := range values {
+		elements[i] = types.StringValue(v)
+	}
+
+	set, diags := types.SetValue(types.StringType, elements)
+	diagnostics.Append(diags...)
+	return set
+}
+
 func createScopedClient(
 	baseClient *client.Client,
 	projectID string,

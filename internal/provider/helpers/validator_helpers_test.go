@@ -147,3 +147,52 @@ func TestTagListValidators(t *testing.T) {
 		})
 	}
 }
+
+func TestTagSetValidators(t *testing.T) {
+	validators := TagSetValidators()
+	require.NotEmpty(t, validators)
+
+	newSet := func(t *testing.T, values ...string) types.Set {
+		s, diags := types.SetValueFrom(context.Background(), types.StringType, values)
+		require.False(t, diags.HasError())
+		return s
+	}
+
+	testCases := []struct {
+		name        string
+		val         types.Set
+		expectError bool
+	}{
+		{"null is skipped", types.SetNull(types.StringType), false},
+		{"empty set", newSet(t), false},
+		{"single tag", newSet(t, "environment:production"), false},
+		{"multiple tags", newSet(t, "environment:production", "team:backend"), false},
+		{"unicode letters and numbers", newSet(t, "café-1", "日本語_2", "ก.3"), false},
+		{"exactly 20 tags", newSet(t, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t"), false},
+		{"exceeds 20 tags", newSet(t, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u"), true},
+		{"tag with space", newSet(t, "prod env"), true},
+		{"tag with comma", newSet(t, "a,b"), true},
+		{"tag with slash", newSet(t, "a/b"), true},
+		{"empty tag", newSet(t, ""), true},
+		{"exceeds 100 characters", newSet(t, strings.Repeat("a", 101)), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.SetRequest{
+				Path:        path.Root("tags"),
+				ConfigValue: tc.val,
+			}
+			resp := &validator.SetResponse{}
+			for _, v := range validators {
+				v.ValidateSet(context.Background(), req, resp)
+			}
+
+			if tc.expectError {
+				require.True(t, resp.Diagnostics.HasError())
+			} else {
+				require.False(t, resp.Diagnostics.HasError())
+			}
+		})
+	}
+}

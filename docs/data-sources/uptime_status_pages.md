@@ -51,7 +51,7 @@ Read-Only:
 - `search_engine_indexed` (Boolean) Whether search engines can index the page
 - `show_response_times` (Boolean) Whether to display response times for monitors on the status page
 - `subdomain` (String) Subdomain for the status page
-- `tags` (List of String) Resource tags
+- `tags` (Set of String) Resource tags
 - `theme` (Attributes) Theme settings to customize the status page (see [below for nested schema](#nestedatt--status_pages--theme))
 - `timeframe` (Number) Number of days of status/incident history to display
 - `title` (String) Status page HTML title

@@ -100,6 +100,7 @@ func (d *uptimeMonitorsDataSource) Read(ctx context.Context, req datasource.Read
 	}
 
 	// Map API response to state using shared helper
+	config.Monitors = make([]monitorModel, 0, len(monitors))
 	for _, monitor := range monitors {
 		monitorState := mapMonitorToModel(ctx, monitor, resp)
 		if resp.Diagnostics.HasError() {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/stretchr/testify/require"
 
 	"terraform-provider-phare/internal/client"
@@ -57,6 +58,11 @@ func TestUptimeMonitorDataSource_Schema(t *testing.T) {
 	// Verify schema is not nil
 	require.NotNil(t, resp.Schema)
 	require.NotNil(t, resp.Schema.Attributes)
+
+	idAttr, ok := resp.Schema.Attributes["id"].(schema.Int64Attribute)
+	require.True(t, ok)
+	require.True(t, idAttr.Required)
+	require.False(t, idAttr.Computed)
 }
 
 func TestUptimeMonitorDataSource_Configure(t *testing.T) {

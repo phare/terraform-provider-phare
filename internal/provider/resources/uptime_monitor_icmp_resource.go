@@ -215,7 +215,7 @@ func updateIcmpModelFromResponse(ctx context.Context, apiResp *client.MonitorRes
 	}
 	model.Regions = regionsList
 
-	model.Tags = helpers.StringSliceToList(apiResp.Tags, diags)
+	model.Tags = helpers.StringSliceToSet(apiResp.Tags, model.Tags, diags)
 }
 
 func icmpRequestModelToClientConfig(ctx context.Context, request *IcmpRequestModel) (client.MonitorRequestConfig, error) {

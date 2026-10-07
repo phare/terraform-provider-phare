@@ -100,6 +100,7 @@ func (d *uptimeStatusPagesDataSource) Read(ctx context.Context, req datasource.R
 	}
 
 	// Map API response to state using shared helper
+	config.StatusPages = make([]statusPageModel, 0, len(statusPages))
 	for _, page := range statusPages {
 		pageState := mapStatusPageToModel(ctx, page, resp)
 		if resp.Diagnostics.HasError() {

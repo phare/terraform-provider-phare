@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
@@ -88,6 +89,17 @@ func TagListValidators() []validator.List {
 		listvalidator.SizeAtMost(20),
 		listvalidator.UniqueValues(),
 		listvalidator.ValueStringsAre(
+			TrimmedLengthBetween(1, 100),
+			stringvalidator.RegexMatches(tagValuePattern, "must contain only Unicode letters, numbers, and . _ : - characters"),
+		),
+	}
+}
+
+// TagSetValidators returns the shared validators for the tags set attribute.
+func TagSetValidators() []validator.Set {
+	return []validator.Set{
+		setvalidator.SizeAtMost(20),
+		setvalidator.ValueStringsAre(
 			TrimmedLengthBetween(1, 100),
 			stringvalidator.RegexMatches(tagValuePattern, "must contain only Unicode letters, numbers, and . _ : - characters"),
 		),

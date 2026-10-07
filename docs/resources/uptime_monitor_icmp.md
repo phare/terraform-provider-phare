@@ -47,7 +47,7 @@ resource "phare_uptime_monitor_icmp" "gateway" {
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
 - `region_threshold` (Number) Number of regions that must fail before an incident is confirmed (1-10)
 - `request` (Block, Optional) ICMP request configuration (see [below for nested schema](#nestedblock--request))
-- `tags` (List of String) Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)
+- `tags` (Set of String) Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)
 
 ### Read-Only
 

@@ -48,7 +48,7 @@ type statusPageModel struct {
 	AccessIPs             types.List   `tfsdk:"access_ips"`
 	AccessPasswordEnabled types.Bool   `tfsdk:"access_password_enabled"`
 	AccessTokenEnabled    types.Bool   `tfsdk:"access_token_enabled"`
-	Tags                  types.List   `tfsdk:"tags"`
+	Tags                  types.Set    `tfsdk:"tags"`
 	CreatedAt             types.String `tfsdk:"created_at"`
 	UpdatedAt             types.String `tfsdk:"updated_at"`
 }
@@ -288,7 +288,7 @@ func mapStatusPageToModel(ctx context.Context, page *client.StatusPageResponse, 
 	}
 
 	// Map tags (null when the API returns none)
-	model.Tags = helpers.StringSliceToList(page.Tags, &resp.Diagnostics)
+	model.Tags = helpers.StringSliceToSet(page.Tags, model.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return statusPageModel{}
 	}
@@ -517,7 +517,7 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 			Computed:    true,
 			Description: "List of IP addresses or CIDR ranges allowed to access the status page",
 		},
-		"tags": schema.ListAttribute{
+		"tags": schema.SetAttribute{
 			ElementType: types.StringType,
 			Computed:    true,
 			Description: "Resource tags",
@@ -563,7 +563,9 @@ func (d *uptimeStatusPageDataSource) Schema(ctx context.Context, req datasource.
 
 	// Add the common status page attributes
 	for key, attr := range statusPageSchemaAttributes() {
-		resp.Schema.Attributes[key] = attr
+		if key != "id" {
+			resp.Schema.Attributes[key] = attr
+		}
 	}
 }
 

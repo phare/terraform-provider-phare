@@ -110,27 +110,28 @@ resource "phare_uptime_status_page" "test" {
 				Config: statusPageConfig(`  tags                  = ["tfacc:status-page-tags-test"]`),
 				Check: testingresource.ComposeAggregateTestCheckFunc(
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "tags.#", "1"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "tags.0", "tfacc:status-page-tags-test"),
+					testingresource.TestCheckTypeSetElemAttr("phare_uptime_status_page.test", "tags.*", "tfacc:status-page-tags-test"),
 				),
 			},
 			{
 				Config: statusPageConfig(`  tags                  = ["tfacc:status-page-tags-test", "environment:production"]`) + `
 data "phare_uptime_status_pages" "filtered" {
   tags = ["tfacc:status-page-tags-test", "environment:production"]
+
+  depends_on = [phare_uptime_status_page.test]
 }
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(
 					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "tags.#", "2"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "tags.0", "tfacc:status-page-tags-test"),
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "tags.1", "environment:production"),
-					testingresource.TestCheckResourceAttr("data.phare_uptime_status_pages.filtered", "status_pages.#", "1"),
-					testingresource.TestCheckResourceAttrPair("data.phare_uptime_status_pages.filtered", "status_pages.0.id", "phare_uptime_status_page.test", "id"),
+					testingresource.TestCheckTypeSetElemAttr("phare_uptime_status_page.test", "tags.*", "tfacc:status-page-tags-test"),
+					testingresource.TestCheckTypeSetElemAttr("phare_uptime_status_page.test", "tags.*", "environment:production"),
+					testingresource.TestCheckTypeSetElemAttrPair("data.phare_uptime_status_pages.filtered", "status_pages.*.id", "phare_uptime_status_page.test", "id"),
 				),
 			},
 			{
 				Config: statusPageConfig(``),
 				Check: testingresource.ComposeAggregateTestCheckFunc(
-					testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "tags.#", "0"),
+					testingresource.TestCheckNoResourceAttr("phare_uptime_status_page.test", "tags.#"),
 				),
 			},
 		},

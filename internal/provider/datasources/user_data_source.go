@@ -84,7 +84,9 @@ func (d *userDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 
 	// Add the common user attributes
 	for key, attr := range userSchemaAttributes() {
-		resp.Schema.Attributes[key] = attr
+		if key != "id" {
+			resp.Schema.Attributes[key] = attr
+		}
 	}
 }
 

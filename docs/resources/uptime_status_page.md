@@ -126,7 +126,7 @@ resource "phare_uptime_status_page" "main" {
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
 - `show_response_times` (Boolean) Whether to display response times for monitors on the status page (default: true)
 - `subscription_channels` (List of String) Subscription channels available (rss, atom, slack)
-- `tags` (List of String) Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)
+- `tags` (Set of String) Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)
 - `theme` (Block, Optional) Theme settings to customize the status page (see [below for nested schema](#nestedblock--theme))
 
 ### Read-Only

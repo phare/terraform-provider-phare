@@ -649,7 +649,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 	t.Run("missing request", func(t *testing.T) {
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -681,7 +681,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 	t.Run("missing success_assertions", func(t *testing.T) {
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -709,7 +709,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 	t.Run("empty success_assertions", func(t *testing.T) {
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -741,7 +741,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 	t.Run("whitespace name trimmed under 2 chars", func(t *testing.T) {
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("  a  "),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -778,7 +778,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 	t.Run("project scope change requires replace", func(t *testing.T) {
 		stateData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:         types.ListNull(types.StringType),
+				Tags:         types.SetNull(types.StringType),
 				Id:           types.Int64Value(100),
 				Name:         types.StringValue("Valid Monitor"),
 				ProjectScope: types.DynamicValue(types.StringValue("project-a")),
@@ -790,7 +790,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:         types.ListNull(types.StringType),
+				Tags:         types.SetNull(types.StringType),
 				Id:           types.Int64Value(100),
 				Name:         types.StringValue("Valid Monitor"),
 				ProjectScope: types.DynamicValue(types.StringValue("project-b")),
@@ -821,7 +821,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 	t.Run("valid plan", func(t *testing.T) {
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -855,7 +855,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -887,7 +887,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -920,7 +920,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 			planData := uptimeMonitorHttpModel{
 				UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-					Tags:    types.ListNull(types.StringType),
+					Tags:    types.SetNull(types.StringType),
 					Name:    types.StringValue("Valid Monitor"),
 					Regions: types.ListNull(types.StringType),
 				},
@@ -946,7 +946,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -971,7 +971,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -1002,7 +1002,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -1040,7 +1040,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -1076,7 +1076,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -1115,7 +1115,7 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 
 		planData := uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Name:    types.StringValue("Valid Monitor"),
 				Regions: types.ListNull(types.StringType),
 			},
@@ -1157,7 +1157,7 @@ func TestUptimeMonitorHttpResource_ImportState(t *testing.T) {
 		state := tfsdk.State{Schema: schemaResp.Schema}
 		diags := state.Set(ctx, &uptimeMonitorHttpModel{
 			UptimeMonitorBaseModel: UptimeMonitorBaseModel{
-				Tags:    types.ListNull(types.StringType),
+				Tags:    types.SetNull(types.StringType),
 				Regions: types.ListNull(types.StringType),
 			},
 		})

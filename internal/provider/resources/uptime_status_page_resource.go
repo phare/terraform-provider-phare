@@ -88,7 +88,7 @@ type UptimeStatusPageModel struct {
 	ShowResponseTimes     types.Bool    `tfsdk:"show_response_times"`
 	Subdomain             types.String  `tfsdk:"subdomain"`
 	SubscriptionChannels  types.List    `tfsdk:"subscription_channels"`
-	Tags                  types.List    `tfsdk:"tags"`
+	Tags                  types.Set     `tfsdk:"tags"`
 	Theme                 types.Object  `tfsdk:"theme"`
 	Timeframe             types.Int64   `tfsdk:"timeframe"`
 	Title                 types.String  `tfsdk:"title"`
@@ -338,12 +338,12 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					listvalidator.ValueStringsAre(stringvalidator.OneOf("rss", "atom", "slack")),
 				},
 			},
-			"tags": schema.ListAttribute{
+			"tags": schema.SetAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
 				Description:         "Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)",
 				MarkdownDescription: "Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)",
-				Validators:          helpers.TagListValidators(),
+				Validators:          helpers.TagSetValidators(),
 			},
 			"timeframe": schema.Int64Attribute{
 				Required:            true,
@@ -1479,7 +1479,7 @@ func (r *uptimeStatusPageResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	// Map tags from API response
-	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	plan.Tags = helpers.StringSliceToSet(apiResp.Tags, plan.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -1596,7 +1596,7 @@ func (r *uptimeStatusPageResource) Read(ctx context.Context, req resource.ReadRe
 	}
 
 	// Map tags from API response
-	state.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	state.Tags = helpers.StringSliceToSet(apiResp.Tags, state.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -1792,7 +1792,7 @@ func (r *uptimeStatusPageResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	// Map tags from API response
-	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	plan.Tags = helpers.StringSliceToSet(apiResp.Tags, plan.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

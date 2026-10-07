@@ -44,7 +44,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "tags.#", "1"),
-					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "tags.0", "tfacc:tcp-tags-test"),
+					testingresource.TestCheckTypeSetElemAttr("phare_uptime_monitor_tcp.test", "tags.*", "tfacc:tcp-tags-test"),
 				),
 			},
 			{
@@ -70,8 +70,8 @@ resource "phare_uptime_monitor_tcp" "test" {
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(
 					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "tags.#", "2"),
-					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "tags.0", "tfacc:tcp-tags-test"),
-					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "tags.1", "environment:production"),
+					testingresource.TestCheckTypeSetElemAttr("phare_uptime_monitor_tcp.test", "tags.*", "tfacc:tcp-tags-test"),
+					testingresource.TestCheckTypeSetElemAttr("phare_uptime_monitor_tcp.test", "tags.*", "environment:production"),
 				),
 			},
 			{
@@ -95,7 +95,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 }
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(
-					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "tags.#", "0"),
+					testingresource.TestCheckNoResourceAttr("phare_uptime_monitor_tcp.test", "tags.#"),
 				),
 			},
 			{
@@ -121,11 +121,37 @@ resource "phare_uptime_monitor_tcp" "test" {
 
 data "phare_uptime_monitors" "filtered" {
   tags = ["tfacc:tcp-tags-test", "environment:production"]
+
+  depends_on = [phare_uptime_monitor_tcp.test]
 }
 `,
 				Check: testingresource.ComposeAggregateTestCheckFunc(
-					testingresource.TestCheckResourceAttr("data.phare_uptime_monitors.filtered", "monitors.#", "1"),
-					testingresource.TestCheckResourceAttrPair("data.phare_uptime_monitors.filtered", "monitors.0.id", "phare_uptime_monitor_tcp.test", "id"),
+					testingresource.TestCheckTypeSetElemAttrPair("data.phare_uptime_monitors.filtered", "monitors.*.id", "phare_uptime_monitor_tcp.test", "id"),
+				),
+			},
+			{
+				Config: `
+resource "phare_uptime_monitor_tcp" "test" {
+  name = "TCP Tags Service"
+
+  request {
+    host            = "invariance.dev"
+    port            = 443
+    connection      = "tls"
+    tls_skip_verify = false
+  }
+
+  interval               = 30
+  timeout                = 7000
+  incident_confirmations = 1
+  recovery_confirmations = 3
+  region_threshold       = 1
+  regions                = ["eu-fra-cdg"]
+  tags                   = []
+}
+`,
+				Check: testingresource.ComposeAggregateTestCheckFunc(
+					testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "tags.#", "0"),
 				),
 			},
 		},

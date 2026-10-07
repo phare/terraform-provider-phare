@@ -39,7 +39,7 @@ type UptimeMonitorBaseModel struct {
 	RegionThreshold       types.Int64   `tfsdk:"region_threshold"`
 	Regions               types.List    `tfsdk:"regions"`
 	Status                types.String  `tfsdk:"status"`
-	Tags                  types.List    `tfsdk:"tags"`
+	Tags                  types.Set     `tfsdk:"tags"`
 	Timeout               types.Int64   `tfsdk:"timeout"`
 	UpdatedAt             types.String  `tfsdk:"updated_at"`
 	ProjectScope          types.Dynamic `tfsdk:"project_scope"`
@@ -117,12 +117,12 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			Description:         "Monitor status",
 			MarkdownDescription: "Monitor status",
 		},
-		"tags": schema.ListAttribute{
+		"tags": schema.SetAttribute{
 			ElementType:         types.StringType,
 			Optional:            true,
 			Description:         "Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)",
 			MarkdownDescription: "Resource tags (max 20, each 1-100 characters, only letters, numbers and . _ : - characters)",
-			Validators:          helpers.TagListValidators(),
+			Validators:          helpers.TagSetValidators(),
 		},
 		"timeout": schema.Int64Attribute{
 			Required:            true,
@@ -429,7 +429,7 @@ func (r *uptimeMonitorTcpResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	// Convert tags List to []string (nil when unset so the API clears tags)
+	// Convert tags Set to []string (nil when unset so the API clears tags)
 	var tags []string
 	if !plan.Tags.IsNull() && !plan.Tags.IsUnknown() {
 		resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
@@ -507,7 +507,7 @@ func (r *uptimeMonitorTcpResource) Create(ctx context.Context, req resource.Crea
 	}
 	plan.Regions = regionsList
 
-	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	plan.Tags = helpers.StringSliceToSet(apiResp.Tags, plan.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -583,7 +583,7 @@ func (r *uptimeMonitorTcpResource) Read(ctx context.Context, req resource.ReadRe
 	}
 	state.Regions = regionsList
 
-	state.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	state.Tags = helpers.StringSliceToSet(apiResp.Tags, state.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -703,7 +703,7 @@ func (r *uptimeMonitorTcpResource) Update(ctx context.Context, req resource.Upda
 	}
 	plan.Regions = regionsList
 
-	plan.Tags = helpers.StringSliceToList(apiResp.Tags, &resp.Diagnostics)
+	plan.Tags = helpers.StringSliceToSet(apiResp.Tags, plan.Tags, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
