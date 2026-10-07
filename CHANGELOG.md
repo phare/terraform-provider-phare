@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.17] - 2026-10-07
+
+### Added
+
+- `tags` parameter on the `phare_uptime_monitor_http`, `phare_uptime_monitor_tcp`, `phare_uptime_monitor_icmp`, and `phare_uptime_status_page` resources.
+- `tags` computed attribute on the `phare_uptime_monitor`, `phare_uptime_monitors`, `phare_uptime_status_page`, and `phare_uptime_status_pages` data sources.
+- `tags` filter on the `phare_uptime_monitors` and `phare_uptime_status_pages` data sources.
+- Missing documentation examples for the `phare_user` and `phare_users` data sources.
+
+### Fixed
+
+- `id` is now a required argument on the `phare_user`, `phare_uptime_monitor`, `phare_uptime_status_page`, and `phare_alert_rule` data sources.
+
+
 ## [0.0.16] - 2026-09-30
 
 ### Added
