@@ -265,7 +265,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 		})
 
 		// Don't retry on client errors (4xx) - these are permanent, except a rate limit (429)
-		if isNonRetryable(resp.StatusCode) {
+		if isPermanent(resp.StatusCode) {
 			return lastErr
 		}
 
@@ -518,7 +518,7 @@ func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fi
 		})
 
 		// Don't retry on client errors (4xx) - these are permanent, except a rate limit (429)
-		if isNonRetryable(resp.StatusCode) {
+		if isPermanent(resp.StatusCode) {
 			return lastErr
 		}
 
@@ -552,9 +552,9 @@ func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fi
 	return lastErr
 }
 
-// isNonRetryable reports whether a status is a permanent client error (4xx).
+// isPermanent reports whether a status is a permanent client error (4xx).
 // A rate limit (429) is not permanent.
-func isNonRetryable(statusCode int) bool {
+func isPermanent(statusCode int) bool {
 	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusTooManyRequests
 }
 
