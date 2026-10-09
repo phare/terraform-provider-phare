@@ -265,12 +265,12 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 		})
 
 		// Don't retry on client errors (4xx) - these are permanent, except a rate limit (429)
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
+		if isNonRetryable(resp.StatusCode) {
 			return lastErr
 		}
 
 		// Retry on server errors (5xx) and rate limits (429) if we have attempts left
-		if (resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests) && attempt < maxRetries {
+		if isRetryable(resp.StatusCode) && attempt < maxRetries {
 			wait := retryWait(resp, backoff)
 			tflog.Debug(ctx, "Retryable error, will retry", map[string]interface{}{
 				"status_code":   resp.StatusCode,
@@ -518,12 +518,12 @@ func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fi
 		})
 
 		// Don't retry on client errors (4xx) - these are permanent, except a rate limit (429)
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
+		if isNonRetryable(resp.StatusCode) {
 			return lastErr
 		}
 
 		// Retry on server errors (5xx) and rate limits (429) if we have attempts left
-		if (resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests) && attempt < maxRetries {
+		if isRetryable(resp.StatusCode) && attempt < maxRetries {
 			wait := retryWait(resp, backoff)
 			tflog.Debug(ctx, "Retryable error, will retry", map[string]interface{}{
 				"status_code":   resp.StatusCode,
@@ -550,6 +550,17 @@ func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fi
 	}
 
 	return lastErr
+}
+
+// isNonRetryable reports whether a status is a permanent client error (4xx).
+// A rate limit (429) is not permanent.
+func isNonRetryable(statusCode int) bool {
+	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusTooManyRequests
+}
+
+// isRetryable reports whether a status is a server error (5xx) or a rate limit (429).
+func isRetryable(statusCode int) bool {
+	return statusCode >= 500 || statusCode == http.StatusTooManyRequests
 }
 
 // retryWait returns the Retry-After delay of a rate-limited response, or the
