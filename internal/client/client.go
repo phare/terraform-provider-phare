@@ -14,6 +14,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -263,22 +264,23 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 			"body":        string(respBody),
 		})
 
-		// Don't retry on client errors (4xx) - these are permanent
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		// Don't retry on client errors (4xx) - these are permanent, except a rate limit (429)
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
 			return lastErr
 		}
 
-		// Retry on server errors (5xx) if we have attempts left
-		if resp.StatusCode >= 500 && attempt < maxRetries {
-			tflog.Debug(ctx, "Server error, will retry", map[string]interface{}{
+		// Retry on server errors (5xx) and rate limits (429) if we have attempts left
+		if (resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests) && attempt < maxRetries {
+			wait := retryWait(resp, backoff)
+			tflog.Debug(ctx, "Retryable error, will retry", map[string]interface{}{
 				"status_code":   resp.StatusCode,
-				"retry_in":      backoff.String(),
+				"retry_in":      wait.String(),
 				"attempts_left": maxRetries - attempt,
 			})
 
 			// Wait with exponential backoff before retrying
 			select {
-			case <-time.After(backoff):
+			case <-time.After(wait):
 				// Calculate next backoff with exponential increase
 				backoff = time.Duration(float64(backoff) * math.Pow(2, float64(attempt)))
 			case <-ctx.Done():
@@ -515,22 +517,23 @@ func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fi
 			"body":        string(respBody),
 		})
 
-		// Don't retry on client errors (4xx) - these are permanent
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		// Don't retry on client errors (4xx) - these are permanent, except a rate limit (429)
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
 			return lastErr
 		}
 
-		// Retry on server errors (5xx) if we have attempts left
-		if resp.StatusCode >= 500 && attempt < maxRetries {
-			tflog.Debug(ctx, "Server error, will retry", map[string]interface{}{
+		// Retry on server errors (5xx) and rate limits (429) if we have attempts left
+		if (resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests) && attempt < maxRetries {
+			wait := retryWait(resp, backoff)
+			tflog.Debug(ctx, "Retryable error, will retry", map[string]interface{}{
 				"status_code":   resp.StatusCode,
-				"retry_in":      backoff.String(),
+				"retry_in":      wait.String(),
 				"attempts_left": maxRetries - attempt,
 			})
 
 			// Wait with exponential backoff before retrying
 			select {
-			case <-time.After(backoff):
+			case <-time.After(wait):
 				// Calculate next backoff with exponential increase
 				backoff = time.Duration(float64(backoff) * math.Pow(2, float64(attempt)))
 			case <-ctx.Done():
@@ -547,4 +550,15 @@ func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fi
 	}
 
 	return lastErr
+}
+
+// retryWait returns the Retry-After delay of a rate-limited response, or the
+// backoff when the response has none.
+func retryWait(resp *http.Response, backoff time.Duration) time.Duration {
+	if resp.StatusCode == http.StatusTooManyRequests {
+		if seconds, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && seconds >= 0 {
+			return time.Duration(seconds) * time.Second
+		}
+	}
+	return backoff
 }
