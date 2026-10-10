@@ -3,7 +3,6 @@
 <a href="https://github.com/phare/terraform-provider-phare/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/phare/terraform-provider-phare/ci.yml?branch=main" alt="GitHub Actions Workflow Status"></a>
 <a href="https://github.com/phare/terraform-provider-phare"><img src="https://img.shields.io/github/go-mod/go-version/phare/terraform-provider-phare" alt="GitHub go.mod Go version"></a>
 <a href="https://github.com/phare/terraform-provider-phare/releases"><img src="https://img.shields.io/github/v/tag/phare/terraform-provider-phare?label=Version" alt="GitHub tag"></a>
-<a href="https://goreportcard.com/report/github.com/phare/terraform-provider-phare"><img src="https://goreportcard.com/badge/github.com/phare/terraform-provider-phare" alt="Go Report Card"></a>
 </p>
 
 <div align="center">
