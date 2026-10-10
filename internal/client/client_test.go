@@ -1,7 +1,11 @@
 package client
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestBuildUserAgent(t *testing.T) {
@@ -66,4 +70,29 @@ func findSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestDoRequest_RetriesRateLimit(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	c, err := NewClient(server.URL, "token", 10*time.Second, "", "", "1.0", "1.0", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.doRequest(context.Background(), http.MethodGet, "/test", nil, nil); err != nil {
+		t.Fatalf("doRequest() error = %v", err)
+	}
+	if attempts != 2 {
+		t.Errorf("attempts = %d, want 2", attempts)
+	}
 }
