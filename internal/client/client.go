@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
+	"math/rand/v2"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -22,7 +22,7 @@ import (
 
 const (
 	defaultTimeout = 30 * time.Second
-	maxRetries     = 3
+	maxRetries     = 5
 	initialBackoff = 1 * time.Second
 )
 
@@ -122,8 +122,8 @@ func buildUserAgent(providerVersion, terraformVersion string) string {
 		providerVersion, terraformVersion)
 }
 
-// doRequest performs an HTTP request with authentication, marshaling, and error handling.
-// It automatically retries on server errors (5xx) with exponential backoff.
+// doRequest performs a JSON HTTP request with authentication, marshaling, and error handling.
+// It retries rate limits (429) and server errors (5xx), see send.
 //
 // Parameters:
 //   - ctx: Context for cancellation
@@ -137,7 +137,6 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 	url := c.baseURL + path
 
 	// Marshal request body
-	var bodyReader io.Reader
 	var jsonBody []byte
 	if body != nil {
 		var err error
@@ -148,7 +147,6 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 			})
 			return fmt.Errorf("failed to marshal request body: %w", err)
 		}
-		bodyReader = bytes.NewReader(jsonBody)
 	}
 
 	// Log request at DEBUG level (summary only)
@@ -164,17 +162,32 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 		})
 	}
 
+	return c.send(ctx, method, url, "application/json", jsonBody, result)
+}
+
+// send performs an HTTP request with authentication and error handling.
+// It retries rate limits (429) after their Retry-After delay plus one second,
+// and server errors (5xx) with a backoff that doubles on each attempt. Every
+// wait adds a random jitter of up to one second, see retryJitter.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - method: HTTP method
+//   - url: Full request URL
+//   - contentType: Content-Type of the request body
+//   - body: Request body, resent in full on every attempt, can be nil
+//   - result: Pointer to store the response (will be unmarshaled from JSON), can be nil
+//
+// Returns an APIError if the request fails.
+func (c *Client) send(ctx context.Context, method, url, contentType string, body []byte, result interface{}) error {
 	var lastErr error
 	backoff := initialBackoff
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		// Log retry attempts
-		if attempt > 0 {
-			tflog.Debug(ctx, "Retrying Phare API request", map[string]interface{}{
-				"attempt": attempt + 1,
-				"max":     maxRetries + 1,
-				"backoff": backoff.String(),
-			})
+		// Create a fresh body reader per attempt, a retry must resend the full body
+		var bodyReader io.Reader
+		if body != nil {
+			bodyReader = bytes.NewReader(body)
 		}
 
 		// Create request
@@ -188,7 +201,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 
 		// Set headers
 		req.Header.Set("Authorization", "Bearer "+c.token)
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", contentType)
 		req.Header.Set("Accept", "application/json")
 		req.Header.Set("User-Agent", c.userAgent)
 
@@ -213,7 +226,6 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 			})
 			return fmt.Errorf("failed to perform request: %w", err)
 		}
-		defer resp.Body.Close()
 
 		// Log response at DEBUG level (summary)
 		tflog.Debug(ctx, "Phare API response", map[string]interface{}{
@@ -221,8 +233,9 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 			"duration_ms": duration.Milliseconds(),
 		})
 
-		// Read response body
+		// Read response body, then close it so retries don't hold it open
 		respBody, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			tflog.Error(ctx, "Failed to read response body", map[string]interface{}{
 				"error":       err.Error(),
@@ -271,20 +284,21 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 
 		// Retry on server errors (5xx) and rate limits (429) if we have attempts left
 		if isRetryable(resp.StatusCode) && attempt < maxRetries {
-			wait := retryWait(resp, backoff)
-			tflog.Debug(ctx, "Retryable error, will retry", map[string]interface{}{
-				"status_code":   resp.StatusCode,
-				"retry_in":      wait.String(),
-				"attempts_left": maxRetries - attempt,
+			wait := retryWait(resp, backoff) + retryJitter()
+			tflog.Debug(ctx, "Retrying Phare API request", map[string]interface{}{
+				"status_code": resp.StatusCode,
+				"retry_in":    wait.String(),
+				"attempt":     attempt + 2,
+				"max":         maxRetries + 1,
 			})
 
-			// Wait with exponential backoff before retrying
+			// Wait for the Retry-After delay or the backoff before retrying
 			select {
 			case <-time.After(wait):
-				// Calculate next backoff with exponential increase
-				backoff = time.Duration(float64(backoff) * math.Pow(2, float64(attempt)))
+				// Double the backoff for the next retry
+				backoff *= 2
 			case <-ctx.Done():
-				tflog.Error(ctx, "Request cancelled during retry backoff", map[string]interface{}{
+				tflog.Error(ctx, "Request cancelled while waiting to retry", map[string]interface{}{
 					"error": ctx.Err().Error(),
 				})
 				return ctx.Err()
@@ -292,7 +306,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 			continue
 		}
 
-		// Return error if no more retries or not a server error
+		// Return error if no more retries or the status is not retryable
 		return lastErr
 	}
 
@@ -353,7 +367,7 @@ type FileUpload struct {
 }
 
 // doMultipartRequest performs an HTTP multipart/form-data request with file uploads.
-// It automatically retries on server errors (5xx) with exponential backoff.
+// It retries rate limits (429) and server errors (5xx), see send.
 //
 // Parameters:
 //   - ctx: Context for cancellation
@@ -367,189 +381,58 @@ type FileUpload struct {
 func (c *Client) doMultipartRequest(ctx context.Context, method, path string, fields []FormField, files []FileUpload, result interface{}) error {
 	url := c.baseURL + path
 
-	var lastErr error
-	backoff := initialBackoff
+	// Build the multipart body once: file contents are streams that can only be
+	// read once, so every attempt must resend the same buffered bytes
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
 
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		// Log retry attempts
-		if attempt > 0 {
-			tflog.Debug(ctx, "Retrying Phare API multipart request", map[string]interface{}{
-				"attempt": attempt + 1,
-				"max":     maxRetries + 1,
-				"backoff": backoff.String(),
-			})
-		}
-
-		// Create multipart body
-		var body bytes.Buffer
-		writer := multipart.NewWriter(&body)
-
-		// Add form fields
-		for _, field := range fields {
-			if err := writer.WriteField(field.Key, field.Value); err != nil {
-				tflog.Error(ctx, "Failed to write multipart field", map[string]interface{}{
-					"field": field.Key,
-					"error": err.Error(),
-				})
-				return fmt.Errorf("failed to write multipart field %s: %w", field.Key, err)
-			}
-		}
-
-		// Add files
-		for _, file := range files {
-			part, err := writer.CreateFormFile(file.FieldName, filepath.Base(file.FileName))
-			if err != nil {
-				tflog.Error(ctx, "Failed to create form file", map[string]interface{}{
-					"field": file.FieldName,
-					"error": err.Error(),
-				})
-				return fmt.Errorf("failed to create form file %s: %w", file.FieldName, err)
-			}
-			if _, err := io.Copy(part, file.Content); err != nil {
-				tflog.Error(ctx, "Failed to copy file content", map[string]interface{}{
-					"field": file.FieldName,
-					"error": err.Error(),
-				})
-				return fmt.Errorf("failed to copy file content for %s: %w", file.FieldName, err)
-			}
-		}
-
-		// Close the multipart writer to finalize the body
-		if err := writer.Close(); err != nil {
-			tflog.Error(ctx, "Failed to close multipart writer", map[string]interface{}{
+	// Add form fields
+	for _, field := range fields {
+		if err := writer.WriteField(field.Key, field.Value); err != nil {
+			tflog.Error(ctx, "Failed to write multipart field", map[string]interface{}{
+				"field": field.Key,
 				"error": err.Error(),
 			})
-			return fmt.Errorf("failed to close multipart writer: %w", err)
+			return fmt.Errorf("failed to write multipart field %s: %w", field.Key, err)
 		}
-
-		// Log request at DEBUG level (summary only)
-		tflog.Debug(ctx, "Phare API multipart request", map[string]interface{}{
-			"method":      method,
-			"url":         url,
-			"field_count": len(fields),
-			"file_count":  len(files),
-		})
-
-		// Create request
-		req, err := http.NewRequestWithContext(ctx, method, url, &body)
-		if err != nil {
-			tflog.Error(ctx, "Failed to create HTTP request", map[string]interface{}{
-				"error": err.Error(),
-			})
-			return fmt.Errorf("failed to create request: %w", err)
-		}
-
-		// Set headers
-		req.Header.Set("Authorization", "Bearer "+c.token)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("User-Agent", c.userAgent)
-
-		// Add project scoping headers if configured
-		if c.projectID != "" {
-			req.Header.Set("X-Phare-Project-Id", c.projectID)
-		}
-		if c.projectSlug != "" {
-			req.Header.Set("X-Phare-Project-Slug", c.projectSlug)
-		}
-
-		// Perform request with timing
-		startTime := time.Now()
-		resp, err := c.httpClient.Do(req)
-		duration := time.Since(startTime)
-
-		if err != nil {
-			tflog.Error(ctx, "Phare API multipart request failed", map[string]interface{}{
-				"error":       err.Error(),
-				"url":         url,
-				"duration_ms": duration.Milliseconds(),
-			})
-			return fmt.Errorf("failed to perform request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		// Log response at DEBUG level (summary)
-		tflog.Debug(ctx, "Phare API multipart response", map[string]interface{}{
-			"status_code": resp.StatusCode,
-			"duration_ms": duration.Milliseconds(),
-		})
-
-		// Read response body
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			tflog.Error(ctx, "Failed to read response body", map[string]interface{}{
-				"error":       err.Error(),
-				"status_code": resp.StatusCode,
-			})
-			return fmt.Errorf("failed to read response body: %w", err)
-		}
-
-		// Log response body at TRACE level (full details)
-		if len(respBody) > 0 {
-			tflog.Trace(ctx, "Phare API multipart response body", map[string]interface{}{
-				"body":        string(respBody),
-				"status_code": resp.StatusCode,
-			})
-		}
-
-		// Handle successful responses
-		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			if result != nil && resp.StatusCode != http.StatusNoContent {
-				if len(respBody) > 0 {
-					if err := json.Unmarshal(respBody, result); err != nil {
-						tflog.Error(ctx, "Failed to unmarshal response", map[string]interface{}{
-							"error": err.Error(),
-						})
-						return fmt.Errorf("failed to unmarshal response: %w", err)
-					}
-				}
-			}
-			return nil
-		}
-
-		// Parse error response
-		lastErr = parseAPIError(resp.StatusCode, respBody)
-
-		// Log HTTP error responses at WARN level
-		tflog.Warn(ctx, "Phare API multipart returned error", map[string]interface{}{
-			"status_code": resp.StatusCode,
-			"error":       lastErr.Error(),
-			"body":        string(respBody),
-		})
-
-		// Don't retry on client errors (4xx) - these are permanent, except a rate limit (429)
-		if isPermanent(resp.StatusCode) {
-			return lastErr
-		}
-
-		// Retry on server errors (5xx) and rate limits (429) if we have attempts left
-		if isRetryable(resp.StatusCode) && attempt < maxRetries {
-			wait := retryWait(resp, backoff)
-			tflog.Debug(ctx, "Retryable error, will retry", map[string]interface{}{
-				"status_code":   resp.StatusCode,
-				"retry_in":      wait.String(),
-				"attempts_left": maxRetries - attempt,
-			})
-
-			// Wait with exponential backoff before retrying
-			select {
-			case <-time.After(wait):
-				// Calculate next backoff with exponential increase
-				backoff = time.Duration(float64(backoff) * math.Pow(2, float64(attempt)))
-			case <-ctx.Done():
-				tflog.Error(ctx, "Request cancelled during retry backoff", map[string]interface{}{
-					"error": ctx.Err().Error(),
-				})
-				return ctx.Err()
-			}
-			continue
-		}
-
-		// Return error if no more retries or not a server error
-		return lastErr
 	}
 
-	return lastErr
+	// Add files
+	for _, file := range files {
+		part, err := writer.CreateFormFile(file.FieldName, filepath.Base(file.FileName))
+		if err != nil {
+			tflog.Error(ctx, "Failed to create form file", map[string]interface{}{
+				"field": file.FieldName,
+				"error": err.Error(),
+			})
+			return fmt.Errorf("failed to create form file %s: %w", file.FieldName, err)
+		}
+		if _, err := io.Copy(part, file.Content); err != nil {
+			tflog.Error(ctx, "Failed to copy file content", map[string]interface{}{
+				"field": file.FieldName,
+				"error": err.Error(),
+			})
+			return fmt.Errorf("failed to copy file content for %s: %w", file.FieldName, err)
+		}
+	}
+
+	// Close the multipart writer to finalize the body
+	if err := writer.Close(); err != nil {
+		tflog.Error(ctx, "Failed to close multipart writer", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	// Log request at DEBUG level (summary only)
+	tflog.Debug(ctx, "Phare API multipart request", map[string]interface{}{
+		"method":      method,
+		"url":         url,
+		"field_count": len(fields),
+		"file_count":  len(files),
+	})
+
+	return c.send(ctx, method, url, writer.FormDataContentType(), body.Bytes(), result)
 }
 
 // isPermanent reports whether a status is a permanent client error (4xx).
@@ -563,13 +446,23 @@ func isRetryable(statusCode int) bool {
 	return statusCode >= 500 || statusCode == http.StatusTooManyRequests
 }
 
-// retryWait returns the Retry-After delay of a rate-limited response, or the
-// backoff when the response has none.
+// retryWait returns how long to wait before retrying a response. A rate limit
+// waits its Retry-After delay plus one second: the API rounds the delay down to
+// whole seconds, and reports 0 during the last second of the window, so
+// retrying after exactly Retry-After can hit the same window again. Other
+// responses, and rate limits without a Retry-After, wait the backoff.
 func retryWait(resp *http.Response, backoff time.Duration) time.Duration {
 	if resp.StatusCode == http.StatusTooManyRequests {
 		if seconds, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && seconds >= 0 {
-			return time.Duration(seconds) * time.Second
+			return time.Duration(seconds)*time.Second + time.Second
 		}
 	}
 	return backoff
+}
+
+// retryJitter returns a random delay of up to one second, added to every retry
+// wait so that parallel requests rate limited together don't all retry at the
+// same instant and hit the limit again.
+func retryJitter() time.Duration {
+	return rand.N(time.Second)
 }
