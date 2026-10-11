@@ -220,5 +220,11 @@ func (p *phareProvider) Resources(ctx context.Context) []func() resource.Resourc
 		resources.NewUptimeMonitorIcmpResource,
 		resources.NewUptimeStatusPageResource,
 		resources.NewProjectResource,
+		resources.NewIntegrationEmailResource,
+		resources.NewIntegrationIlertResource,
+		resources.NewIntegrationNtfyResource,
+		resources.NewIntegrationOutgoingWebhookResource,
+		resources.NewIntegrationPushoverResource,
+		resources.NewIntegrationSmsResource,
 	}
 }

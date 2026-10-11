@@ -2,16 +2,68 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 )
 
+// IntegrationRequest represents the request body for creating/updating an integration.
+// Settings holds one of the app specific settings structs below.
+type IntegrationRequest struct {
+	Name     string `json:"name"`
+	Settings any    `json:"settings"`
+}
+
+// MembersIntegrationSettings represents the settings of the email and sms integrations.
+type MembersIntegrationSettings struct {
+	Members []int64 `json:"members"`
+}
+
+// IlertIntegrationSettings represents the settings of the ilert integration.
+type IlertIntegrationSettings struct {
+	IntegrationKey string `json:"integration_key"`
+}
+
+// NtfyIntegrationSettings represents the settings of the ntfy integration.
+// AccessToken is always sent, a null value removes the token.
+type NtfyIntegrationSettings struct {
+	Hostname    string  `json:"hostname"`
+	Topic       string  `json:"topic"`
+	AccessToken *string `json:"access_token"`
+}
+
+// OutgoingWebhookIntegrationSettings represents the settings of the outgoing webhook integration.
+type OutgoingWebhookIntegrationSettings struct {
+	URL    string `json:"url"`
+	Secret string `json:"secret"`
+}
+
+// PushoverIntegrationSettings represents the settings of the pushover integration.
+type PushoverIntegrationSettings struct {
+	UserKey string `json:"user_key"`
+	APIKey  string `json:"api_key"`
+}
+
+// IntegrationResponse represents an integration response from the API.
+// Settings are app specific, secrets are never returned.
 type IntegrationResponse struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Paused    bool   `json:"paused"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ID        int64           `json:"id"`
+	App       string          `json:"app"`
+	Name      string          `json:"name"`
+	Paused    bool            `json:"paused"`
+	Settings  json.RawMessage `json:"settings,omitempty"`
+	CreatedAt string          `json:"created_at"`
+	UpdatedAt string          `json:"updated_at"`
+}
+
+// CreateIntegration creates a new integration for the given app.
+func (c *Client) CreateIntegration(ctx context.Context, app string, req *IntegrationRequest) (*IntegrationResponse, error) {
+	var resp IntegrationResponse
+	path := fmt.Sprintf("/apps/%s/integrations", app)
+	if err := c.doRequest(ctx, "POST", path, req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 // GetIntegration retrieves an integration by app and ID.
@@ -22,6 +74,22 @@ func (c *Client) GetIntegration(ctx context.Context, app string, integrationID i
 		return nil, err
 	}
 	return &resp, nil
+}
+
+// UpdateIntegration updates an existing integration of the given app.
+func (c *Client) UpdateIntegration(ctx context.Context, app string, integrationID int64, req *IntegrationRequest) (*IntegrationResponse, error) {
+	var resp IntegrationResponse
+	path := fmt.Sprintf("/apps/%s/integrations/%d", app, integrationID)
+	if err := c.doRequest(ctx, "POST", path, req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// DeleteIntegration deletes an integration of the given app by ID.
+func (c *Client) DeleteIntegration(ctx context.Context, app string, integrationID int64) error {
+	path := fmt.Sprintf("/apps/%s/integrations/%d", app, integrationID)
+	return c.doRequest(ctx, "DELETE", path, nil, nil)
 }
 
 // GetIntegrationByName retrieves an integration by app and name.
