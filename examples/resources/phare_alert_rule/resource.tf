@@ -3,7 +3,7 @@ data "phare_integration" "email" {
   name = "Default"
 }
 
-data "phare_integration" "email" {
+data "phare_integration" "webhook" {
   app  = "outgoing_webhook"
   name = "n8n"
 }
@@ -22,7 +22,7 @@ resource "phare_alert_rule" "incident_created" {
 resource "phare_alert_rule" "monitor_certificate_expiring" {
   event          = "uptime.monitor_certificate.expiring"
   scope          = "organization"
-  integration_id = data.phare_integration.email.id
+  integration_id = data.phare_integration.webhook.id
   rate_limit     = 5
 
   event_settings = jsonencode({

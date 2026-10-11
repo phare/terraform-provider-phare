@@ -77,7 +77,7 @@ resource "phare_uptime_status_page" "main" {
 
   # Requires an active Scale plan subscription
   access_password = "supersecret"
-  access_token    = "mytoken"
+  access_token    = "my-access-token"
   access_ips      = ["192.168.1.0/24", "10.0.0.1"]
   tags            = ["environment:production"]
 }
