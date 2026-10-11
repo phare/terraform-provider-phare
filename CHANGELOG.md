@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-10-11
+
+### Added
+
+- `phare_integration_email`, `phare_integration_ilert`, `phare_integration_ntfy`, `phare_integration_outgoing_webhook`, `phare_integration_pushover` and `phare_integration_sms` resources to manage integrations.
+
+### Changed
+
+- First stable release, version constraints such as `~> 0.0.1` do not include it and must be updated to `~> 1.0`.
+- **Breaking:** `border` is required in the `light` and `dark` theme blocks of the `phare_uptime_status_page` resource, like the other theme colors. Add it to existing `theme` blocks, the previous default colors are `#e5e5e5` for `light` and `#3f3f46` for `dark`.
+
+### Fixed
+
+- The border color of status pages with a `theme` block was reset to its default on every apply, as the provider did not send it.
+- Invalid examples in the documentation of the `phare_alert_rule` and `phare_uptime_status_page` resources, and of the `phare_integration`, `phare_project` and `phare_uptime_monitor` data sources.
+
 ## [0.0.19] - 2026-10-11
 
 ### Added

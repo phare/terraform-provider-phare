@@ -147,7 +147,7 @@ terraform {
   required_providers {
     phare = {
       source  = "phare/phare"
-      version = "~> 0.0.1"
+      version = "~> 1.0"
     }
   }
 }
