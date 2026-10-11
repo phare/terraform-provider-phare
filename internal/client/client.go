@@ -158,7 +158,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 	// Log request body at TRACE level (full details)
 	if body != nil {
 		tflog.Trace(ctx, "Phare API request body", map[string]interface{}{
-			"body": string(jsonBody),
+			"body": redactBody(jsonBody),
 		})
 	}
 
@@ -247,7 +247,7 @@ func (c *Client) send(ctx context.Context, method, url, contentType string, body
 		// Log response body at TRACE level (full details)
 		if len(respBody) > 0 {
 			tflog.Trace(ctx, "Phare API response body", map[string]interface{}{
-				"body":        string(respBody),
+				"body":        redactBody(respBody),
 				"status_code": resp.StatusCode,
 			})
 		}
@@ -274,7 +274,7 @@ func (c *Client) send(ctx context.Context, method, url, contentType string, body
 		tflog.Warn(ctx, "Phare API returned error", map[string]interface{}{
 			"status_code": resp.StatusCode,
 			"error":       lastErr.Error(),
-			"body":        string(respBody),
+			"body":        redactBody(respBody),
 		})
 
 		// Don't retry on client errors (4xx) - these are permanent, except a rate limit (429)
