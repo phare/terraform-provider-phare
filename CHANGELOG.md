@@ -5,7 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.18]
+## [0.0.19] - 2026-10-11
+
+### Added
+
+- `SECURITY.md` describing how to privately report vulnerabilities.
+
+### Security
+
+- Upgraded `github.com/cloudflare/circl` to v1.6.5, `google.golang.org/grpc` to v1.84.0, and `github.com/ProtonMail/go-crypto` to v1.5.2 to address known CVEs.
+- Updated Go requirement to 1.27.2 to pick up standard library security fixes.
+
+
+## [0.0.18] - 2026-10-10
 
 ### Fixed
 
