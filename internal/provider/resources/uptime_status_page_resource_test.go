@@ -1213,3 +1213,74 @@ func TestUptimeStatusPageResource_ImportState(t *testing.T) {
 		require.Equal(t, "my-project", helpers.GetDynamicStringValue(model.ProjectScope))
 	})
 }
+
+// themeColorsSchemaAttributes returns the color attributes of the light or dark theme block
+func themeColorsSchemaAttributes(t *testing.T, mode string) map[string]schema.Attribute {
+	t.Helper()
+
+	resp := &resource.SchemaResponse{}
+	NewUptimeStatusPageResource().Schema(context.Background(), resource.SchemaRequest{}, resp)
+
+	theme, ok := resp.Schema.Blocks["theme"].(schema.SingleNestedBlock)
+	require.True(t, ok)
+	colors, ok := theme.Blocks[mode].(schema.SingleNestedBlock)
+	require.True(t, ok)
+
+	return colors.Attributes
+}
+
+func TestUptimeStatusPageResource_ThemeColorsSchema(t *testing.T) {
+	for _, mode := range []string{"light", "dark"} {
+		attributes := themeColorsSchemaAttributes(t, mode)
+
+		// Every color the API accepts, the border included
+		require.Len(t, attributes, len(ThemeColorsModelAttrTypes), mode)
+		require.Contains(t, attributes, "border", mode)
+
+		for name, attribute := range attributes {
+			color, ok := attribute.(schema.StringAttribute)
+			require.True(t, ok, mode+"/"+name)
+
+			// Every theme color shares the same validation
+			require.True(t, color.IsRequired(), mode+"/"+name)
+			require.False(t, color.IsComputed(), mode+"/"+name)
+			require.Len(t, color.Validators, 1, mode+"/"+name)
+		}
+	}
+}
+
+func TestUptimeStatusPageResource_ThemeColorValidation(t *testing.T) {
+	testCases := []struct {
+		name        string
+		value       string
+		expectError bool
+	}{
+		{"lowercase color", "#e5e5e5", false},
+		{"digits only", "#000000", false},
+		{"uppercase color rejected by the API", "#E5E5E5", true},
+		{"short color", "#fff", true},
+		{"missing hash", "e5e5e5", true},
+		{"invalid character", "#e5e5eg", true},
+	}
+
+	for _, mode := range []string{"light", "dark"} {
+		for name, attribute := range themeColorsSchemaAttributes(t, mode) {
+			color, ok := attribute.(schema.StringAttribute)
+			require.True(t, ok)
+
+			for _, tc := range testCases {
+				t.Run(mode+"/"+name+"/"+tc.name, func(t *testing.T) {
+					resp := &validator.StringResponse{}
+					for _, v := range color.Validators {
+						v.ValidateString(context.Background(), validator.StringRequest{
+							Path:        path.Root("theme").AtName(mode).AtName(name),
+							ConfigValue: types.StringValue(tc.value),
+						}, resp)
+					}
+
+					require.Equal(t, tc.expectError, resp.Diagnostics.HasError())
+				})
+			}
+		}
+	}
+}
