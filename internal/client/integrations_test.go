@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -35,7 +36,7 @@ func TestCreateIntegration_SendsSettings(t *testing.T) {
 
 	require.Equal(t, http.MethodPost, method)
 	require.Equal(t, "/apps/ntfy/integrations", path)
-	require.JSONEq(t, `{"name":"Ops","settings":{"hostname":"ntfy.sh","topic":"alerts","access_token":null}}`, body)
+	require.JSONEq(t, `{"name":"Ops","settings":{"hostname":"ntfy.sh","topic":"alerts"}}`, body)
 
 	require.Equal(t, int64(1), integration.ID)
 	require.Equal(t, "ntfy", integration.App)
@@ -67,6 +68,28 @@ func TestUpdateIntegration_SendsSettings(t *testing.T) {
 	require.Equal(t, "/apps/pushover/integrations/5", path)
 	require.JSONEq(t, `{"name":"Phone","settings":{"user_key":"user","api_key":"api"}}`, body)
 	require.JSONEq(t, `{}`, string(integration.Settings))
+}
+
+func TestNtfyIntegrationSettings_MarshalJSON(t *testing.T) {
+	token := "tk_00000000000000000000000000000"
+
+	testCases := []struct {
+		name     string
+		settings NtfyIntegrationSettings
+		expected string
+	}{
+		{"access token", NtfyIntegrationSettings{Hostname: "ntfy.sh", Topic: "alerts", AccessToken: &token}, `{"hostname":"ntfy.sh","topic":"alerts","access_token":"` + token + `"}`},
+		{"no access token is omitted to keep the current one", NtfyIntegrationSettings{Hostname: "ntfy.sh", Topic: "alerts"}, `{"hostname":"ntfy.sh","topic":"alerts"}`},
+		{"removed access token is null", NtfyIntegrationSettings{Hostname: "ntfy.sh", Topic: "alerts", RemoveAccessToken: true}, `{"hostname":"ntfy.sh","topic":"alerts","access_token":null}`},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			body, err := json.Marshal(tc.settings)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.expected, string(body))
+		})
+	}
 }
 
 func TestDeleteIntegration(t *testing.T) {

@@ -53,7 +53,7 @@ func (m *integrationIlertModel) base() *IntegrationBaseModel {
 	return &m.IntegrationBaseModel
 }
 
-func (m *integrationIlertModel) buildSettings(ctx context.Context, diags *diag.Diagnostics) any {
+func (m *integrationIlertModel) buildSettings(ctx context.Context, prior integrationModel, diags *diag.Diagnostics) any {
 	return client.IlertIntegrationSettings{
 		IntegrationKey: m.Settings.IntegrationKey.ValueString(),
 	}

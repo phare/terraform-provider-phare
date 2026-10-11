@@ -88,8 +88,9 @@ func IntegrationBaseResourceSchema() map[string]schema.Attribute {
 type integrationModel interface {
 	// base returns the fields shared by all integrations
 	base() *IntegrationBaseModel
-	// buildSettings returns the API settings payload built from the model
-	buildSettings(ctx context.Context, diags *diag.Diagnostics) any
+	// buildSettings returns the API settings payload built from the model, prior is
+	// the model of the prior state on update and nil on create
+	buildSettings(ctx context.Context, prior integrationModel, diags *diag.Diagnostics) any
 	// readSettings updates the model settings from the API response, secrets
 	// are never returned by the API and are kept from the prior model
 	readSettings(ctx context.Context, settings json.RawMessage, diags *diag.Diagnostics)
@@ -151,11 +152,12 @@ func (r *integrationResource) mapAPIResponseToModel(ctx context.Context, apiResp
 	model.readSettings(ctx, apiResp.Settings, diags)
 }
 
-// buildAPIRequestFromModel builds an API request from the resource model
-func (r *integrationResource) buildAPIRequestFromModel(ctx context.Context, model integrationModel, diags *diag.Diagnostics) *client.IntegrationRequest {
+// buildAPIRequestFromModel builds an API request from the resource model, prior
+// is the model of the prior state on update and nil on create
+func (r *integrationResource) buildAPIRequestFromModel(ctx context.Context, model, prior integrationModel, diags *diag.Diagnostics) *client.IntegrationRequest {
 	return &client.IntegrationRequest{
 		Name:     model.base().Name.ValueString(),
-		Settings: model.buildSettings(ctx, diags),
+		Settings: model.buildSettings(ctx, prior, diags),
 	}
 }
 
@@ -169,7 +171,7 @@ func (r *integrationResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// Build API request from plan
-	apiReq := r.buildAPIRequestFromModel(ctx, plan, &resp.Diagnostics)
+	apiReq := r.buildAPIRequestFromModel(ctx, plan, nil, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -186,11 +188,9 @@ func (r *integrationResource) Create(ctx context.Context, req resource.CreateReq
 
 	// Map API response to state
 	r.mapAPIResponseToModel(ctx, apiResp, plan, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 
-	// Save data into Terraform state
+	// Save data into Terraform state even when the response could not be mapped, the integration
+	// exists and Terraform marks it as tainted to replace it instead of leaving it behind
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
@@ -246,7 +246,7 @@ func (r *integrationResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	// Build API request from plan
-	apiReq := r.buildAPIRequestFromModel(ctx, plan, &resp.Diagnostics)
+	apiReq := r.buildAPIRequestFromModel(ctx, plan, state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

@@ -63,7 +63,7 @@ func (m *integrationPushoverModel) base() *IntegrationBaseModel {
 	return &m.IntegrationBaseModel
 }
 
-func (m *integrationPushoverModel) buildSettings(ctx context.Context, diags *diag.Diagnostics) any {
+func (m *integrationPushoverModel) buildSettings(ctx context.Context, prior integrationModel, diags *diag.Diagnostics) any {
 	return client.PushoverIntegrationSettings{
 		UserKey: m.Settings.UserKey.ValueString(),
 		APIKey:  m.Settings.ApiKey.ValueString(),

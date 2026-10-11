@@ -57,7 +57,7 @@ func (m *integrationMembersModel) base() *IntegrationBaseModel {
 	return &m.IntegrationBaseModel
 }
 
-func (m *integrationMembersModel) buildSettings(ctx context.Context, diags *diag.Diagnostics) any {
+func (m *integrationMembersModel) buildSettings(ctx context.Context, prior integrationModel, diags *diag.Diagnostics) any {
 	var settings client.MembersIntegrationSettings
 	diags.Append(m.Settings.Members.ElementsAs(ctx, &settings.Members, false)...)
 	return settings

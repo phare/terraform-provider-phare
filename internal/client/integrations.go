@@ -25,11 +25,26 @@ type IlertIntegrationSettings struct {
 }
 
 // NtfyIntegrationSettings represents the settings of the ntfy integration.
-// AccessToken is always sent, a null value removes the token.
+// The API keeps the current access token when it is omitted, a nil AccessToken
+// is omitted unless RemoveAccessToken is set to send a null token removing it.
 type NtfyIntegrationSettings struct {
-	Hostname    string  `json:"hostname"`
-	Topic       string  `json:"topic"`
-	AccessToken *string `json:"access_token"`
+	Hostname          string  `json:"hostname"`
+	Topic             string  `json:"topic"`
+	AccessToken       *string `json:"access_token"`
+	RemoveAccessToken bool    `json:"-"`
+}
+
+// MarshalJSON omits a nil access token, or sends it as null when RemoveAccessToken is set.
+func (s NtfyIntegrationSettings) MarshalJSON() ([]byte, error) {
+	body := map[string]any{
+		"hostname": s.Hostname,
+		"topic":    s.Topic,
+	}
+	if s.AccessToken != nil || s.RemoveAccessToken {
+		body["access_token"] = s.AccessToken
+	}
+
+	return json.Marshal(body)
 }
 
 // OutgoingWebhookIntegrationSettings represents the settings of the outgoing webhook integration.

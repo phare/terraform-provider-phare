@@ -329,6 +329,7 @@ func TestIntegrationResources_BuildSettings(t *testing.T) {
 	testCases := []struct {
 		name     string
 		model    integrationModel
+		prior    integrationModel
 		expected string
 	}{
 		{
@@ -355,11 +356,39 @@ func TestIntegrationResources_BuildSettings(t *testing.T) {
 			expected: `{"hostname":"ntfy.sh","topic":"alerts","access_token":"` + testNtfyAccessToken + `"}`,
 		},
 		{
-			name: "ntfy without access token sends null to remove it",
+			name: "ntfy without access token omits it",
 			model: &integrationNtfyModel{Settings: &integrationNtfySettingsModel{
 				Hostname:    types.StringValue("ntfy.sh"),
 				Topic:       types.StringValue("alerts"),
 				AccessToken: types.StringNull(),
+			}},
+			expected: `{"hostname":"ntfy.sh","topic":"alerts"}`,
+		},
+		{
+			name: "ntfy without access token in the state omits it to keep the current one",
+			model: &integrationNtfyModel{Settings: &integrationNtfySettingsModel{
+				Hostname:    types.StringValue("ntfy.sh"),
+				Topic:       types.StringValue("alerts"),
+				AccessToken: types.StringNull(),
+			}},
+			prior: &integrationNtfyModel{Settings: &integrationNtfySettingsModel{
+				Hostname:    types.StringValue("ntfy.sh"),
+				Topic:       types.StringValue("old"),
+				AccessToken: types.StringNull(),
+			}},
+			expected: `{"hostname":"ntfy.sh","topic":"alerts"}`,
+		},
+		{
+			name: "ntfy access token removed from the configuration sends null to remove it",
+			model: &integrationNtfyModel{Settings: &integrationNtfySettingsModel{
+				Hostname:    types.StringValue("ntfy.sh"),
+				Topic:       types.StringValue("alerts"),
+				AccessToken: types.StringNull(),
+			}},
+			prior: &integrationNtfyModel{Settings: &integrationNtfySettingsModel{
+				Hostname:    types.StringValue("ntfy.sh"),
+				Topic:       types.StringValue("alerts"),
+				AccessToken: types.StringValue(testNtfyAccessToken),
 			}},
 			expected: `{"hostname":"ntfy.sh","topic":"alerts","access_token":null}`,
 		},
@@ -384,7 +413,7 @@ func TestIntegrationResources_BuildSettings(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var diags diag.Diagnostics
-			settings := tc.model.buildSettings(ctx, &diags)
+			settings := tc.model.buildSettings(ctx, tc.prior, &diags)
 			require.False(t, diags.HasError())
 
 			body, err := json.Marshal(settings)
@@ -520,6 +549,25 @@ func TestIntegrationResource_CRUD(t *testing.T) {
 		require.Equal(t, testNtfyAccessToken, state.Settings.AccessToken.ValueString())
 	})
 
+	t.Run("create stores the integration when the response can not be mapped", func(t *testing.T) {
+		var requests []recordedRequest
+		server := newIntegrationTestServer(t, &requests, http.StatusCreated, `{"id":42,"app":"ntfy","name":"Ops","paused":false,"settings":{"topic":1},"created_at":"2026-10-11T00:00:00Z","updated_at":"2026-10-11T00:00:00Z"}`)
+		r := newIntegrationTestResource(t, NewIntegrationNtfyResource, server.URL)
+
+		plan := tfsdk.Plan{Schema: s}
+		require.False(t, plan.Set(ctx, ntfyModel(types.Int64Unknown(), "alerts", types.StringNull())).HasError())
+
+		resp := &resource.CreateResponse{State: emptyIntegrationState(s)}
+		r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
+		require.True(t, resp.Diagnostics.HasError())
+		require.Equal(t, "Error decoding integration settings", resp.Diagnostics.Errors()[0].Summary())
+
+		// Terraform marks the integration as tainted to replace it on the next apply
+		state := readState(t, resp.State)
+		require.Equal(t, int64(42), state.Id.ValueInt64())
+		require.Equal(t, "alerts", state.Settings.Topic.ValueString())
+	})
+
 	t.Run("read refreshes the settings and keeps the access token", func(t *testing.T) {
 		var requests []recordedRequest
 		server := newIntegrationTestServer(t, &requests, http.StatusOK, ntfyResponse("renamed"))
@@ -600,6 +648,25 @@ func TestIntegrationResource_CRUD(t *testing.T) {
 		updated := readState(t, resp.State)
 		require.Equal(t, "renamed", updated.Settings.Topic.ValueString())
 		require.True(t, updated.Settings.AccessToken.IsNull())
+	})
+
+	t.Run("update keeps an access token unknown to terraform", func(t *testing.T) {
+		var requests []recordedRequest
+		server := newIntegrationTestServer(t, &requests, http.StatusOK, ntfyResponse("renamed"))
+		r := newIntegrationTestResource(t, NewIntegrationNtfyResource, server.URL)
+
+		// Imported integrations have no access token in the state
+		state := tfsdk.State{Schema: s}
+		require.False(t, state.Set(ctx, ntfyModel(types.Int64Value(42), "alerts", types.StringNull())).HasError())
+		plan := tfsdk.Plan{Schema: s}
+		require.False(t, plan.Set(ctx, ntfyModel(types.Int64Value(42), "renamed", types.StringNull())).HasError())
+
+		resp := &resource.UpdateResponse{State: state}
+		r.Update(ctx, resource.UpdateRequest{Plan: plan, State: state}, resp)
+		require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+
+		require.Len(t, requests, 1)
+		require.JSONEq(t, `{"name":"Ops","settings":{"hostname":"ntfy.sh","topic":"renamed"}}`, requests[0].Body)
 	})
 
 	t.Run("delete", func(t *testing.T) {

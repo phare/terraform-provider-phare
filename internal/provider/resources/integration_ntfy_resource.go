@@ -74,13 +74,20 @@ func (m *integrationNtfyModel) base() *IntegrationBaseModel {
 	return &m.IntegrationBaseModel
 }
 
-func (m *integrationNtfyModel) buildSettings(ctx context.Context, diags *diag.Diagnostics) any {
-	return client.NtfyIntegrationSettings{
-		Hostname: m.Settings.Hostname.ValueString(),
-		Topic:    m.Settings.Topic.ValueString(),
-		// A null access token removes the token from the integration
+func (m *integrationNtfyModel) buildSettings(ctx context.Context, prior integrationModel, diags *diag.Diagnostics) any {
+	settings := client.NtfyIntegrationSettings{
+		Hostname:    m.Settings.Hostname.ValueString(),
+		Topic:       m.Settings.Topic.ValueString(),
 		AccessToken: m.Settings.AccessToken.ValueStringPointer(),
 	}
+
+	// The access token is only removed when it is removed from the configuration, an access
+	// token unknown to Terraform (imported or set outside of Terraform) is kept by omitting it
+	if prior, ok := prior.(*integrationNtfyModel); ok && prior.Settings != nil {
+		settings.RemoveAccessToken = settings.AccessToken == nil && !prior.Settings.AccessToken.IsNull()
+	}
+
+	return settings
 }
 
 func (m *integrationNtfyModel) readSettings(ctx context.Context, raw json.RawMessage, diags *diag.Diagnostics) {

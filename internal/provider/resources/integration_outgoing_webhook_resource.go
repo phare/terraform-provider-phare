@@ -64,7 +64,7 @@ func (m *integrationOutgoingWebhookModel) base() *IntegrationBaseModel {
 	return &m.IntegrationBaseModel
 }
 
-func (m *integrationOutgoingWebhookModel) buildSettings(ctx context.Context, diags *diag.Diagnostics) any {
+func (m *integrationOutgoingWebhookModel) buildSettings(ctx context.Context, prior integrationModel, diags *diag.Diagnostics) any {
 	return client.OutgoingWebhookIntegrationSettings{
 		URL:    m.Settings.Url.ValueString(),
 		Secret: m.Settings.Secret.ValueString(),
