@@ -92,7 +92,7 @@ resource "phare_uptime_status_page" "main" {
 
   # Requires an active Scale plan subscription
   access_password = "supersecret"
-  access_token    = "mytoken"
+  access_token    = "my-access-token"
   access_ips      = ["192.168.1.0/24", "10.0.0.1"]
   tags            = ["environment:production"]
 }
@@ -184,6 +184,7 @@ Required:
 
 - `background` (String) Background color (e.g., #111111)
 - `background_card` (String) Card background color (e.g., #1a1a1a)
+- `border` (String) Border color (e.g., #3f3f46)
 - `degraded_performance` (String) Color for degraded performance status (e.g., #fbbf24)
 - `empty` (String) Color for empty/no data status (e.g., #d3d3d3)
 - `foreground` (String) Foreground/text color (e.g., #ffffff)
@@ -201,6 +202,7 @@ Required:
 
 - `background` (String) Background color (e.g., #ffffff)
 - `background_card` (String) Card background color (e.g., #fafafa)
+- `border` (String) Border color (e.g., #e5e5e5)
 - `degraded_performance` (String) Color for degraded performance status (e.g., #fbbf24)
 - `empty` (String) Color for empty/no data status (e.g., #d3d3d3)
 - `foreground` (String) Foreground/text color (e.g., #000000)

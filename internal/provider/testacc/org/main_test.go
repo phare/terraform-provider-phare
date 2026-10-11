@@ -37,6 +37,10 @@ func runWithProject(m *testing.M) int {
 		log.Printf("[WARN] Sweeping leaked projects: %s", err)
 	}
 
+	if err := testacc.SweepIntegrations(ctx, c); err != nil {
+		log.Printf("[WARN] Sweeping leaked integrations: %s", err)
+	}
+
 	project, err := testacc.CreateRunProject(ctx, c)
 	if err != nil {
 		log.Printf("[ERROR] Creating test run project: %s", err)

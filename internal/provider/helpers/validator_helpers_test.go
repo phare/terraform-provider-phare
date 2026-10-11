@@ -196,3 +196,125 @@ func TestTagSetValidators(t *testing.T) {
 		})
 	}
 }
+
+func TestSafeEntityName(t *testing.T) {
+	v := SafeEntityName()
+	require.NotEmpty(t, v.Description(context.Background()))
+	require.NotEmpty(t, v.MarkdownDescription(context.Background()))
+
+	testCases := []struct {
+		name        string
+		val         types.String
+		expectError bool
+	}{
+		{"null is skipped", types.StringNull(), false},
+		{"unknown is skipped", types.StringUnknown(), false},
+		{"letters numbers and spaces", types.StringValue("DevOps Team 2"), false},
+		{"allowed symbols", types.StringValue("Ops. + ' | ! - _ — & : # ( ) [ ] ,"), false},
+		{"unicode letters", types.StringValue("Équipe 日本語"), false},
+		{"test prefix", types.StringValue("tfacc-integration-a1b2c3d4"), false},
+		{"emoji", types.StringValue("Ops 🚀"), true},
+		{"slash", types.StringValue("Ops/Infra"), true},
+		{"at sign", types.StringValue("ops@example"), true},
+		{"hebrew", types.StringValue("צוות"), true},
+		{"arabic", types.StringValue("فريق"), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.StringRequest{
+				Path:        path.Root("name"),
+				ConfigValue: tc.val,
+			}
+			resp := &validator.StringResponse{}
+			v.ValidateString(context.Background(), req, resp)
+
+			if tc.expectError {
+				require.True(t, resp.Diagnostics.HasError())
+			} else {
+				require.False(t, resp.Diagnostics.HasError())
+			}
+		})
+	}
+}
+
+func TestHostname(t *testing.T) {
+	v := Hostname()
+	require.NotEmpty(t, v.Description(context.Background()))
+	require.NotEmpty(t, v.MarkdownDescription(context.Background()))
+
+	testCases := []struct {
+		name        string
+		val         types.String
+		expectError bool
+	}{
+		{"null is skipped", types.StringNull(), false},
+		{"unknown is skipped", types.StringUnknown(), false},
+		{"public hostname", types.StringValue("ntfy.sh"), false},
+		{"subdomain", types.StringValue("ntfy.example.com"), false},
+		{"hyphenated label", types.StringValue("my-ntfy.example.co"), false},
+		{"scheme", types.StringValue("https://ntfy.sh"), true},
+		{"path", types.StringValue("ntfy.sh/topic"), true},
+		{"port", types.StringValue("ntfy.sh:443"), true},
+		{"ipv4", types.StringValue("10.20.30.40"), true},
+		{"ipv6", types.StringValue("2001:db8::1"), true},
+		{"localhost", types.StringValue("localhost"), true},
+		{"no top-level domain", types.StringValue("ntfy"), true},
+		{"single character top-level domain", types.StringValue("ntfy.s"), true},
+		{"leading hyphen", types.StringValue("-ntfy.sh"), true},
+		{"empty label", types.StringValue("ntfy..sh"), true},
+		{"label exceeds 63 characters", types.StringValue(strings.Repeat("a", 64) + ".sh"), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.StringRequest{
+				Path:        path.Root("hostname"),
+				ConfigValue: tc.val,
+			}
+			resp := &validator.StringResponse{}
+			v.ValidateString(context.Background(), req, resp)
+
+			if tc.expectError {
+				require.True(t, resp.Diagnostics.HasError())
+			} else {
+				require.False(t, resp.Diagnostics.HasError())
+			}
+		})
+	}
+}
+
+func TestHasPrefix(t *testing.T) {
+	v := HasPrefix("tk_")
+	require.NotEmpty(t, v.Description(context.Background()))
+	require.NotEmpty(t, v.MarkdownDescription(context.Background()))
+
+	testCases := []struct {
+		name        string
+		val         types.String
+		expectError bool
+	}{
+		{"null is skipped", types.StringNull(), false},
+		{"unknown is skipped", types.StringUnknown(), false},
+		{"with prefix", types.StringValue("tk_secret"), false},
+		{"without prefix", types.StringValue("secret"), true},
+		{"prefix not at start", types.StringValue("secret_tk_"), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.StringRequest{
+				Path:        path.Root("access_token"),
+				ConfigValue: tc.val,
+			}
+			resp := &validator.StringResponse{}
+			v.ValidateString(context.Background(), req, resp)
+
+			require.Equal(t, tc.expectError, resp.Diagnostics.HasError())
+			if tc.expectError {
+				// The value of sensitive attributes must not leak in diagnostics
+				require.NotContains(t, resp.Diagnostics.Errors()[0].Detail(), tc.val.ValueString())
+			}
+		})
+	}
+}

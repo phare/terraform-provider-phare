@@ -35,6 +35,7 @@ type ThemeColorsModel struct {
 	Maintenance         types.String `tfsdk:"maintenance"`
 	Empty               types.String `tfsdk:"empty"`
 	Background          types.String `tfsdk:"background"`
+	Border              types.String `tfsdk:"border"`
 	Foreground          types.String `tfsdk:"foreground"`
 	ForegroundMuted     types.String `tfsdk:"foreground_muted"`
 	BackgroundCard      types.String `tfsdk:"background_card"`
@@ -405,232 +406,34 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Blocks: map[string]schema.Block{
 					"light": schema.SingleNestedBlock{
 						Attributes: map[string]schema.Attribute{
-							"operational": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for operational status (e.g., #16a34a)",
-								MarkdownDescription: "Color for operational status (e.g., #16a34a)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #16a34a)",
-									),
-								},
-							},
-							"degraded_performance": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for degraded performance status (e.g., #fbbf24)",
-								MarkdownDescription: "Color for degraded performance status (e.g., #fbbf24)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #fbbf24)",
-									),
-								},
-							},
-							"partial_outage": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for partial outage status (e.g., #f59e0b)",
-								MarkdownDescription: "Color for partial outage status (e.g., #f59e0b)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #f59e0b)",
-									),
-								},
-							},
-							"major_outage": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for major outage status (e.g., #ef4444)",
-								MarkdownDescription: "Color for major outage status (e.g., #ef4444)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #ef4444)",
-									),
-								},
-							},
-							"maintenance": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for maintenance status (e.g., #6366f1)",
-								MarkdownDescription: "Color for maintenance status (e.g., #6366f1)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #6366f1)",
-									),
-								},
-							},
-							"empty": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for empty/no data status (e.g., #d3d3d3)",
-								MarkdownDescription: "Color for empty/no data status (e.g., #d3d3d3)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #d3d3d3)",
-									),
-								},
-							},
-							"background": schema.StringAttribute{
-								Required:            true,
-								Description:         "Background color (e.g., #ffffff)",
-								MarkdownDescription: "Background color (e.g., #ffffff)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #ffffff)",
-									),
-								},
-							},
-							"foreground": schema.StringAttribute{
-								Required:            true,
-								Description:         "Foreground/text color (e.g., #000000)",
-								MarkdownDescription: "Foreground/text color (e.g., #000000)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #000000)",
-									),
-								},
-							},
-							"foreground_muted": schema.StringAttribute{
-								Required:            true,
-								Description:         "Muted foreground/text color (e.g., #737373)",
-								MarkdownDescription: "Muted foreground/text color (e.g., #737373)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #737373)",
-									),
-								},
-							},
-							"background_card": schema.StringAttribute{
-								Required:            true,
-								Description:         "Card background color (e.g., #fafafa)",
-								MarkdownDescription: "Card background color (e.g., #fafafa)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #fafafa)",
-									),
-								},
-							},
+							"operational":          themeColorAttribute("Color for operational status", "#16a34a"),
+							"degraded_performance": themeColorAttribute("Color for degraded performance status", "#fbbf24"),
+							"partial_outage":       themeColorAttribute("Color for partial outage status", "#f59e0b"),
+							"major_outage":         themeColorAttribute("Color for major outage status", "#ef4444"),
+							"maintenance":          themeColorAttribute("Color for maintenance status", "#6366f1"),
+							"empty":                themeColorAttribute("Color for empty/no data status", "#d3d3d3"),
+							"background":           themeColorAttribute("Background color", "#ffffff"),
+							"border":               themeColorAttribute("Border color", "#e5e5e5"),
+							"foreground":           themeColorAttribute("Foreground/text color", "#000000"),
+							"foreground_muted":     themeColorAttribute("Muted foreground/text color", "#737373"),
+							"background_card":      themeColorAttribute("Card background color", "#fafafa"),
 						},
 						Description:         "Light theme colors",
 						MarkdownDescription: "Light theme colors",
 					},
 					"dark": schema.SingleNestedBlock{
 						Attributes: map[string]schema.Attribute{
-							"operational": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for operational status (e.g., #16a34a)",
-								MarkdownDescription: "Color for operational status (e.g., #16a34a)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #16a34a)",
-									),
-								},
-							},
-							"degraded_performance": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for degraded performance status (e.g., #fbbf24)",
-								MarkdownDescription: "Color for degraded performance status (e.g., #fbbf24)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #fbbf24)",
-									),
-								},
-							},
-							"partial_outage": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for partial outage status (e.g., #f59e0b)",
-								MarkdownDescription: "Color for partial outage status (e.g., #f59e0b)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #f59e0b)",
-									),
-								},
-							},
-							"major_outage": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for major outage status (e.g., #ef4444)",
-								MarkdownDescription: "Color for major outage status (e.g., #ef4444)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #ef4444)",
-									),
-								},
-							},
-							"maintenance": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for maintenance status (e.g., #6366f1)",
-								MarkdownDescription: "Color for maintenance status (e.g., #6366f1)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #6366f1)",
-									),
-								},
-							},
-							"empty": schema.StringAttribute{
-								Required:            true,
-								Description:         "Color for empty/no data status (e.g., #d3d3d3)",
-								MarkdownDescription: "Color for empty/no data status (e.g., #d3d3d3)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #d3d3d3)",
-									),
-								},
-							},
-							"background": schema.StringAttribute{
-								Required:            true,
-								Description:         "Background color (e.g., #111111)",
-								MarkdownDescription: "Background color (e.g., #111111)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #111111)",
-									),
-								},
-							},
-							"foreground": schema.StringAttribute{
-								Required:            true,
-								Description:         "Foreground/text color (e.g., #ffffff)",
-								MarkdownDescription: "Foreground/text color (e.g., #ffffff)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #ffffff)",
-									),
-								},
-							},
-							"foreground_muted": schema.StringAttribute{
-								Required:            true,
-								Description:         "Muted foreground/text color (e.g., #959595)",
-								MarkdownDescription: "Muted foreground/text color (e.g., #959595)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #959595)",
-									),
-								},
-							},
-							"background_card": schema.StringAttribute{
-								Required:            true,
-								Description:         "Card background color (e.g., #1a1a1a)",
-								MarkdownDescription: "Card background color (e.g., #1a1a1a)",
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										regexp.MustCompile(`^#[0-9a-fA-F]{6}$`),
-										"must be a valid hexadecimal color code (e.g., #1a1a1a)",
-									),
-								},
-							},
+							"operational":          themeColorAttribute("Color for operational status", "#16a34a"),
+							"degraded_performance": themeColorAttribute("Color for degraded performance status", "#fbbf24"),
+							"partial_outage":       themeColorAttribute("Color for partial outage status", "#f59e0b"),
+							"major_outage":         themeColorAttribute("Color for major outage status", "#ef4444"),
+							"maintenance":          themeColorAttribute("Color for maintenance status", "#6366f1"),
+							"empty":                themeColorAttribute("Color for empty/no data status", "#d3d3d3"),
+							"background":           themeColorAttribute("Background color", "#111111"),
+							"border":               themeColorAttribute("Border color", "#3f3f46"),
+							"foreground":           themeColorAttribute("Foreground/text color", "#ffffff"),
+							"foreground_muted":     themeColorAttribute("Muted foreground/text color", "#959595"),
+							"background_card":      themeColorAttribute("Card background color", "#1a1a1a"),
 						},
 						Description:         "Dark theme colors",
 						MarkdownDescription: "Dark theme colors",
@@ -639,6 +442,25 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Theme settings to customize the status page",
 				MarkdownDescription: "Theme settings to customize the status page",
 			},
+		},
+	}
+}
+
+// themeColorPattern matches the lowercase hexadecimal colors accepted by the API
+var themeColorPattern = regexp.MustCompile(`^#[0-9a-f]{6}$`)
+
+// themeColorAttribute returns the schema of a theme color, so that every color
+// of the light and dark themes shares the same validation
+func themeColorAttribute(description, example string) schema.StringAttribute {
+	return schema.StringAttribute{
+		Required:            true,
+		Description:         fmt.Sprintf("%s (e.g., %s)", description, example),
+		MarkdownDescription: fmt.Sprintf("%s (e.g., %s)", description, example),
+		Validators: []validator.String{
+			stringvalidator.RegexMatches(
+				themeColorPattern,
+				fmt.Sprintf("must be a valid lowercase hexadecimal color code (e.g., %s)", example),
+			),
 		},
 	}
 }
@@ -652,6 +474,7 @@ var ThemeColorsModelAttrTypes = map[string]attr.Type{
 	"maintenance":          types.StringType,
 	"empty":                types.StringType,
 	"background":           types.StringType,
+	"border":               types.StringType,
 	"foreground":           types.StringType,
 	"foreground_muted":     types.StringType,
 	"background_card":      types.StringType,
@@ -875,6 +698,7 @@ func themeColorsModelToClient(colors ThemeColorsModel) *client.ThemeColors {
 		Maintenance:         colors.Maintenance.ValueString(),
 		Empty:               colors.Empty.ValueString(),
 		Background:          colors.Background.ValueString(),
+		Border:              colors.Border.ValueString(),
 		Foreground:          colors.Foreground.ValueString(),
 		ForegroundMuted:     colors.ForegroundMuted.ValueString(),
 		BackgroundCard:      colors.BackgroundCard.ValueString(),
@@ -891,6 +715,7 @@ func clientToThemeColorsModel(colors *client.ThemeColors) ThemeColorsModel {
 		Maintenance:         types.StringValue(colors.Maintenance),
 		Empty:               types.StringValue(colors.Empty),
 		Background:          types.StringValue(colors.Background),
+		Border:              types.StringValue(colors.Border),
 		Foreground:          types.StringValue(colors.Foreground),
 		ForegroundMuted:     types.StringValue(colors.ForegroundMuted),
 		BackgroundCard:      types.StringValue(colors.BackgroundCard),
@@ -907,6 +732,7 @@ func mapThemeColorsToAttrs(colors ThemeColorsModel) map[string]attr.Value {
 		"maintenance":          colors.Maintenance,
 		"empty":                colors.Empty,
 		"background":           colors.Background,
+		"border":               colors.Border,
 		"foreground":           colors.Foreground,
 		"foreground_muted":     colors.ForegroundMuted,
 		"background_card":      colors.BackgroundCard,

@@ -75,6 +75,7 @@ const StatusPageThemeBlock = `
       maintenance          = "#6366f1"
       empty                = "#d3d3d3"
       background           = "#ffffff"
+      border               = "#e5e7eb"
       foreground           = "#000000"
       foreground_muted     = "#737373"
       background_card      = "#fafafa"
@@ -88,6 +89,7 @@ const StatusPageThemeBlock = `
       maintenance          = "#6366f1"
       empty                = "#d3d3d3"
       background           = "#111111"
+      border               = "#232323"
       foreground           = "#ffffff"
       foreground_muted     = "#959595"
       background_card      = "#1a1a1a"
@@ -160,6 +162,9 @@ func CheckDestroy(projectScope string) testingresource.TestCheckFunc {
 				_, err = scopedClient.GetMonitor(ctx, id)
 			case "phare_uptime_status_page":
 				_, err = scopedClient.GetStatusPage(ctx, id)
+			case "phare_integration_email", "phare_integration_ilert", "phare_integration_ntfy",
+				"phare_integration_outgoing_webhook", "phare_integration_pushover", "phare_integration_sms":
+				_, err = unscopedClient.GetIntegration(ctx, strings.TrimPrefix(rs.Type, "phare_integration_"), id)
 			default:
 				continue
 			}

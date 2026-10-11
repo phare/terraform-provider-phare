@@ -23,6 +23,26 @@ func TestAccAlertRuleDataSource(t *testing.T) {
 	testacc.RunAlertRuleDataSource(t, scope())
 }
 
+func TestAccIntegrationEmailResource(t *testing.T) {
+	testacc.RunIntegrationEmailResource(t, scope())
+}
+
+func TestAccIntegrationIlertResource(t *testing.T) {
+	testacc.RunIntegrationIlertResource(t, scope())
+}
+
+func TestAccIntegrationNtfyResource(t *testing.T) {
+	testacc.RunIntegrationNtfyResource(t, scope())
+}
+
+func TestAccIntegrationOutgoingWebhookResource(t *testing.T) {
+	testacc.RunIntegrationOutgoingWebhookResource(t, scope())
+}
+
+func TestAccIntegrationPushoverResource(t *testing.T) {
+	testacc.RunIntegrationPushoverResource(t, scope())
+}
+
 func TestAccUptimeMonitorHttpResource(t *testing.T) {
 	testacc.RunUptimeMonitorHttpResource(t, scope())
 }

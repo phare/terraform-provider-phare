@@ -13,11 +13,11 @@ Fetches a specific project by ID or slug. You must specify either 'id' or 'slug'
 ## Example Usage
 
 ```terraform
-data "phare_project" "acme" {
+data "phare_project" "by_id" {
   id = 123
 }
 
-data "phare_project" "acme" {
+data "phare_project" "by_slug" {
   slug = "acme"
 }
 ```

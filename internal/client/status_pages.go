@@ -46,6 +46,7 @@ type ThemeColors struct {
 	Maintenance         string `json:"maintenance"`
 	Empty               string `json:"empty"`
 	Background          string `json:"background"`
+	Border              string `json:"border"`
 	Foreground          string `json:"foreground"`
 	ForegroundMuted     string `json:"foreground_muted"`
 	BackgroundCard      string `json:"background_card"`
@@ -282,6 +283,7 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 			fields = append(fields, FormField{"theme[light][maintenance]", req.Theme.Light.Maintenance})
 			fields = append(fields, FormField{"theme[light][empty]", req.Theme.Light.Empty})
 			fields = append(fields, FormField{"theme[light][background]", req.Theme.Light.Background})
+			fields = append(fields, FormField{"theme[light][border]", req.Theme.Light.Border})
 			fields = append(fields, FormField{"theme[light][foreground]", req.Theme.Light.Foreground})
 			fields = append(fields, FormField{"theme[light][foreground_muted]", req.Theme.Light.ForegroundMuted})
 			fields = append(fields, FormField{"theme[light][background_card]", req.Theme.Light.BackgroundCard})
@@ -294,6 +296,7 @@ func (c *Client) UpdateStatusPageWithFiles(ctx context.Context, id int64, req *S
 			fields = append(fields, FormField{"theme[dark][maintenance]", req.Theme.Dark.Maintenance})
 			fields = append(fields, FormField{"theme[dark][empty]", req.Theme.Dark.Empty})
 			fields = append(fields, FormField{"theme[dark][background]", req.Theme.Dark.Background})
+			fields = append(fields, FormField{"theme[dark][border]", req.Theme.Dark.Border})
 			fields = append(fields, FormField{"theme[dark][foreground]", req.Theme.Dark.Foreground})
 			fields = append(fields, FormField{"theme[dark][foreground_muted]", req.Theme.Dark.ForegroundMuted})
 			fields = append(fields, FormField{"theme[dark][background_card]", req.Theme.Dark.BackgroundCard})

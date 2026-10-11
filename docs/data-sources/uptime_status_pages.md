@@ -98,6 +98,7 @@ Read-Only:
 
 - `background` (String) Background color
 - `background_card` (String) Card background color
+- `border` (String) Border color
 - `degraded_performance` (String) Color for degraded performance status
 - `empty` (String) Color for empty/no data status
 - `foreground` (String) Foreground/text color
@@ -115,6 +116,7 @@ Read-Only:
 
 - `background` (String) Background color
 - `background_card` (String) Card background color
+- `border` (String) Border color
 - `degraded_performance` (String) Color for degraded performance status
 - `empty` (String) Color for empty/no data status
 - `foreground` (String) Foreground/text color

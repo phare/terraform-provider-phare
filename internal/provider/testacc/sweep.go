@@ -126,6 +126,38 @@ func SweepProjectResources(ctx context.Context, c *client.Client) error {
 	return nil
 }
 
+// sweptIntegrationApps lists the apps of the integrations created by the
+// acceptance tests
+var sweptIntegrationApps = []string{"email", "ilert", "ntfy", "outgoing_webhook", "pushover"}
+
+// SweepIntegrations deletes the integrations leaked by previous test runs.
+// Integrations belong to the organization, so both API key scopes sweep them.
+// Integrations still used by alert rules are skipped, a later sweep deletes
+// them once their alert rules are swept.
+func SweepIntegrations(ctx context.Context, c *client.Client) error {
+	for _, app := range sweptIntegrationApps {
+		integrations, err := listAll(func(page int) ([]*client.IntegrationResponse, error) {
+			return c.ListIntegrations(ctx, app, "", page, sweepPageSize)
+		})
+		if err != nil {
+			return fmt.Errorf("listing %s integrations: %w", app, err)
+		}
+
+		for _, integration := range integrations {
+			if !isLeaked(integration.Name, integration.CreatedAt) {
+				continue
+			}
+
+			log.Printf("[INFO] Sweeping leaked %s integration %q (%d)", app, integration.Name, integration.ID)
+			if err := c.DeleteIntegration(ctx, app, integration.ID); err != nil && !client.IsNotFoundError(err) {
+				log.Printf("[WARN] Deleting %s integration %d: %s", app, integration.ID, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 // isLeaked reports whether a resource was created by the acceptance tests
 // more than SweepMaxAge ago
 func isLeaked(name, createdAt string) bool {

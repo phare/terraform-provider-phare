@@ -18,7 +18,7 @@ data "phare_integration" "email" {
   name = "Default"
 }
 
-data "phare_integration" "email" {
+data "phare_integration" "slack" {
   app  = "slack"
   name = "DevOps Team"
 }

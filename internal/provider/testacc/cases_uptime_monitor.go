@@ -90,7 +90,8 @@ resource "phare_uptime_monitor_http" "test" {
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.method", "GET"),
 			),
 		},
-		s.ImportStep("phare_uptime_monitor_http.test"),
+		// The status and update date change as soon as the first check completes
+		s.ImportStep("phare_uptime_monitor_http.test", "status", "updated_at"),
 	)
 }
 
@@ -160,7 +161,8 @@ resource "phare_uptime_monitor_icmp" "test" {
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "request.host", "8.8.8.8"),
 			),
 		},
-		s.ImportStep("phare_uptime_monitor_icmp.test"),
+		// The status and update date change as soon as the first check completes
+		s.ImportStep("phare_uptime_monitor_icmp.test", "status", "updated_at"),
 	)
 }
 
@@ -241,7 +243,8 @@ resource "phare_uptime_monitor_tcp" "test" {
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "request.tls_skip_verify", "true"),
 			),
 		},
-		s.ImportStep("phare_uptime_monitor_tcp.test"),
+		// The status and update date change as soon as the first check completes
+		s.ImportStep("phare_uptime_monitor_tcp.test", "status", "updated_at"),
 	)
 }
 
