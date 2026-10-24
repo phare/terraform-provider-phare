@@ -65,6 +65,47 @@ func TestUptimeMonitorBaseResourceSchema_Tags(t *testing.T) {
 	require.NotEmpty(t, tagsAttr.Validators)
 }
 
+func TestUptimeMonitorBaseResourceSchema_DisplayName(t *testing.T) {
+	r := NewUptimeMonitorTcpResource()
+	resp := &resource.SchemaResponse{}
+	r.Schema(context.Background(), resource.SchemaRequest{}, resp)
+
+	displayNameAttr, ok := resp.Schema.Attributes["display_name"].(schema.StringAttribute)
+	require.True(t, ok)
+	require.True(t, displayNameAttr.Optional)
+	require.False(t, displayNameAttr.Computed)
+	require.NotEmpty(t, displayNameAttr.Validators)
+
+	testCases := []struct {
+		name        string
+		val         types.String
+		expectError bool
+	}{
+		{"valid 2 chars", types.StringValue("ab"), false},
+		{"valid 45 chars", types.StringValue(strings.Repeat("a", 45)), false},
+		{"invalid 1 char", types.StringValue("a"), true},
+		{"invalid 46 chars", types.StringValue(strings.Repeat("a", 46)), true},
+		{"invalid whitespace only", types.StringValue("   "), true},
+		{"null value skipped", types.StringNull(), false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			valReq := validator.StringRequest{
+				Path:        path.Root("display_name"),
+				ConfigValue: tc.val,
+			}
+			valResp := &validator.StringResponse{}
+
+			for _, v := range displayNameAttr.Validators {
+				v.ValidateString(context.Background(), valReq, valResp)
+			}
+
+			require.Equal(t, tc.expectError, valResp.Diagnostics.HasError())
+		})
+	}
+}
+
 func TestUptimeMonitorTcpResource_NameValidation(t *testing.T) {
 	r := NewUptimeMonitorTcpResource()
 	resp := &resource.SchemaResponse{}

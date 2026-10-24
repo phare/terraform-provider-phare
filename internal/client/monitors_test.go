@@ -61,9 +61,27 @@ func TestMonitorResponse_DecodesTags(t *testing.T) {
 	require.Equal(t, []string{"environment:production", "team:backend"}, monitor.Tags)
 }
 
+func TestMonitorResponse_DecodesDisplayName(t *testing.T) {
+	var withDisplayName MonitorResponse
+	require.NoError(t, json.Unmarshal([]byte(`{"id": 1, "name": "mon", "display_name": "Website"}`), &withDisplayName))
+	require.NotNil(t, withDisplayName.DisplayName)
+	require.Equal(t, "Website", *withDisplayName.DisplayName)
+
+	var withoutDisplayName MonitorResponse
+	require.NoError(t, json.Unmarshal([]byte(`{"id": 1, "name": "mon", "display_name": null}`), &withoutDisplayName))
+	require.Nil(t, withoutDisplayName.DisplayName)
+}
+
 func TestMonitorRequest_MarshalsNilTagsAsNull(t *testing.T) {
 	req := &MonitorRequest{Name: "mon", Protocol: "http"}
 	body, err := json.Marshal(req)
 	require.NoError(t, err)
-	require.JSONEq(t, `{"name":"mon","protocol":"http","request":{},"interval":0,"timeout":0,"incident_confirmations":0,"recovery_confirmations":0,"region_threshold":0,"regions":null,"tags":null}`, string(body))
+	require.JSONEq(t, `{"name":"mon","display_name":null,"protocol":"http","request":{},"interval":0,"timeout":0,"incident_confirmations":0,"recovery_confirmations":0,"region_threshold":0,"regions":null,"tags":null}`, string(body))
+}
+
+func TestMonitorRequest_MarshalsDisplayName(t *testing.T) {
+	displayName := "Website"
+	body, err := json.Marshal(&MonitorRequest{Name: "mon", DisplayName: &displayName})
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"display_name":"Website"`)
 }

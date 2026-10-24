@@ -1,5 +1,6 @@
 resource "phare_uptime_monitor_icmp" "gateway" {
-  name = "Gateway Ping"
+  name         = "Gateway Ping"
+  display_name = "Network" # Public name on status pages
 
   request {
     host = "1.1.1.1"

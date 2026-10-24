@@ -15,10 +15,11 @@ func RunUptimeMonitorHttpResource(t *testing.T, s Scope) {
 			Config: `
 resource "phare_uptime_monitor_http" "test" {
 	` + s.Attr() + `
-	name     = "` + name + `"
-	interval = 30
-	timeout  = 15000
-	regions  = ["eu-fra-cdg"]
+	name         = "` + name + `"
+	display_name = "Website"
+	interval     = 30
+	timeout      = 15000
+	regions      = ["eu-fra-cdg"]
 
 	incident_confirmations = 3
 	recovery_confirmations = 2
@@ -39,6 +40,7 @@ resource "phare_uptime_monitor_http" "test" {
 `,
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "name", name),
+				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "display_name", "Website"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "interval", "30"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "timeout", "15000"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "incident_confirmations", "3"),
@@ -85,6 +87,7 @@ resource "phare_uptime_monitor_http" "test" {
 `,
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "name", name+"-updated"),
+				testingresource.TestCheckNoResourceAttr("phare_uptime_monitor_http.test", "display_name"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "interval", "60"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "region_threshold", "1"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.method", "GET"),
@@ -214,7 +217,8 @@ resource "phare_uptime_monitor_tcp" "test" {
 			Config: `
 resource "phare_uptime_monitor_tcp" "test" {
   ` + s.Attr() + `
-  name = "` + name + `-updated"
+  name         = "` + name + `-updated"
+  display_name = "Website"
 
   request {
     host            = "invariance.dev"
@@ -233,6 +237,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 `,
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "name", name+"-updated"),
+				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "display_name", "Website"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "interval", "60"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "timeout", "10000"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "incident_confirmations", "2"),
@@ -343,6 +348,7 @@ data "phare_uptime_monitors" "all" {
 				testingresource.TestCheckResourceAttrPair("data.phare_uptime_monitor.test", "id", "phare_uptime_monitor_http.test", "id"),
 				testingresource.TestCheckResourceAttrPair("data.phare_uptime_monitor.test", "project_id", "phare_uptime_monitor_http.test", "project_id"),
 				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "name", name),
+				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "display_name", "Core Monitor"),
 				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "protocol", "http"),
 				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "interval", "30"),
 				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "request.url", "https://invariance.dev"),

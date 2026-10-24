@@ -35,7 +35,6 @@ resource "phare_uptime_status_page" "test" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = phare_uptime_monitor_http.test.id
-          display_name       = "Core Monitor"
         }
       ]
     }
@@ -66,7 +65,6 @@ resource "phare_uptime_status_page" "test" {
 				testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.is_expanded", "true"),
 				testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.components.0.componentable_type", "uptime/monitor"),
 				testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "components.0.components.0.componentable_id"),
-				testingresource.TestCheckResourceAttr("phare_uptime_status_page.test", "components.0.components.0.display_name", "Core Monitor"),
 				testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "id"),
 				testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "project_id"),
 				testingresource.TestCheckResourceAttrSet("phare_uptime_status_page.test", "created_at"),
@@ -235,7 +233,6 @@ resource "phare_uptime_status_page" "test" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = phare_uptime_monitor_http.test.id
-          display_name       = "Core Monitor"
         }
       ]
     }

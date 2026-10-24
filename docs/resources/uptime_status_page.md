@@ -74,7 +74,6 @@ resource "phare_uptime_status_page" "main" {
     {
       componentable_type = "uptime/monitor"
       componentable_id   = data.phare_uptime_monitor.web.id
-      display_name       = "Marketing Website"
     },
     {
       componentable_type = "uptime/group"
@@ -84,7 +83,6 @@ resource "phare_uptime_status_page" "main" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = data.phare_uptime_monitor.api.id
-          display_name       = "API Gateway"
         }
       ]
     }
@@ -149,7 +147,6 @@ Optional:
 
 - `componentable_id` (Number) ID of the component entity to display on the status page (required for uptime/monitor)
 - `components` (Attributes List) List of components shown inside the group (required for uptime/group) (see [below for nested schema](#nestedatt--components--components))
-- `display_name` (String) Custom display name of the monitor on the status page (for uptime/monitor)
 - `is_expanded` (Boolean) Whether the group components are expanded by default (for uptime/group)
 - `name` (String) Name of the component group (required for uptime/group)
 
@@ -160,10 +157,6 @@ Required:
 
 - `componentable_id` (Number) ID of the component entity to display inside the component group
 - `componentable_type` (String) Type of component entity (uptime/monitor)
-
-Optional:
-
-- `display_name` (String) Custom display name of the monitor on the status page
 
 
 

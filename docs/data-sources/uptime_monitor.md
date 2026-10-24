@@ -32,6 +32,7 @@ data "phare_uptime_monitor" "web" {
 ### Read-Only
 
 - `created_at` (String) Creation timestamp
+- `display_name` (String) Public name of the monitor on status pages, null when the monitor name is used
 - `incident_confirmations` (Number) Number of confirmations before creating an incident
 - `interval` (Number) Monitoring interval in seconds
 - `name` (String) Monitor name

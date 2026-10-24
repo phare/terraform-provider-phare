@@ -7,8 +7,10 @@ import (
 )
 
 // MonitorRequest represents the request body for creating/updating a monitor.
+// DisplayName is always sent, as a null clears it while a missing field keeps the current value.
 type MonitorRequest struct {
 	Name                  string                   `json:"name"`
+	DisplayName           *string                  `json:"display_name"`
 	Protocol              string                   `json:"protocol"`
 	Request               MonitorRequestConfig     `json:"request"`
 	Interval              int64                    `json:"interval"`
@@ -50,6 +52,7 @@ type MonitorResponse struct {
 	ID                    int64                    `json:"id"`
 	ProjectID             int64                    `json:"project_id"`
 	Name                  string                   `json:"name"`
+	DisplayName           *string                  `json:"display_name"`
 	Protocol              string                   `json:"protocol"`
 	Request               MonitorRequestConfig     `json:"request"`
 	Interval              int64                    `json:"interval"`

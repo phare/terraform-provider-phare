@@ -805,6 +805,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 
 	apiReq := &client.MonitorRequest{
 		Name:                  plan.Name.ValueString(),
+		DisplayName:           plan.DisplayName.ValueStringPointer(),
 		Protocol:              "http", // Always http - TLS is determined by URL scheme
 		Request:               reqConfig,
 		Interval:              plan.Interval.ValueInt64(),
@@ -830,6 +831,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 	// Map API response to state
 	plan.Id = types.Int64Value(apiResp.ID)
 	plan.Name = types.StringValue(apiResp.Name)
+	plan.DisplayName = types.StringPointerValue(apiResp.DisplayName)
 	plan.Interval = types.Int64Value(apiResp.Interval)
 	plan.Timeout = types.Int64Value(apiResp.Timeout)
 	plan.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
@@ -917,6 +919,7 @@ func (r *uptimeMonitorHttpResource) Read(ctx context.Context, req resource.ReadR
 
 	// Update state from API response
 	state.Name = types.StringValue(apiResp.Name)
+	state.DisplayName = types.StringPointerValue(apiResp.DisplayName)
 	state.Interval = types.Int64Value(apiResp.Interval)
 	state.Timeout = types.Int64Value(apiResp.Timeout)
 	state.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
@@ -1094,6 +1097,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 
 	apiReq := &client.MonitorRequest{
 		Name:                  plan.Name.ValueString(),
+		DisplayName:           plan.DisplayName.ValueStringPointer(),
 		Protocol:              "http",
 		Request:               reqConfig,
 		Interval:              plan.Interval.ValueInt64(),
@@ -1119,6 +1123,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	// Update state from API response
 	plan.Id = types.Int64Value(apiResp.ID)
 	plan.Name = types.StringValue(apiResp.Name)
+	plan.DisplayName = types.StringPointerValue(apiResp.DisplayName)
 	plan.Interval = types.Int64Value(apiResp.Interval)
 	plan.Timeout = types.Int64Value(apiResp.Timeout)
 	plan.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)

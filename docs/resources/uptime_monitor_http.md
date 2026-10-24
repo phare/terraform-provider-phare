@@ -14,7 +14,8 @@ Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and
 
 ```terraform
 resource "phare_uptime_monitor_http" "website" {
-  name = "Website"
+  name         = "Website"
+  display_name = "Marketing Website" # Public name on status pages
 
   request {
     method            = "HEAD"
@@ -83,6 +84,7 @@ resource "phare_uptime_monitor_http" "website" {
 
 ### Optional
 
+- `display_name` (String) Public name of the monitor on status pages, defaults to the monitor `name`
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
 - `region_threshold` (Number) Number of regions that must fail before an incident is confirmed (1-10)
 - `request` (Block, Optional) HTTP/HTTPS request configuration (see [below for nested schema](#nestedblock--request))

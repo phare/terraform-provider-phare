@@ -29,6 +29,7 @@ import (
 // This is embedded in both HTTP and TCP monitor models
 type UptimeMonitorBaseModel struct {
 	CreatedAt             types.String  `tfsdk:"created_at"`
+	DisplayName           types.String  `tfsdk:"display_name"`
 	Id                    types.Int64   `tfsdk:"id"`
 	IncidentConfirmations types.Int64   `tfsdk:"incident_confirmations"`
 	Interval              types.Int64   `tfsdk:"interval"`
@@ -52,6 +53,17 @@ func UptimeMonitorBaseResourceSchema(ctx context.Context) map[string]schema.Attr
 			Computed:            true,
 			Description:         "Date of creation",
 			MarkdownDescription: "Date of creation",
+		},
+		"display_name": schema.StringAttribute{
+			Optional:            true,
+			Description:         "Public name of the monitor on status pages, defaults to the monitor name",
+			MarkdownDescription: "Public name of the monitor on status pages, defaults to the monitor `name`",
+			PlanModifiers: []planmodifier.String{
+				helpers.TrimString(),
+			},
+			Validators: []validator.String{
+				helpers.TrimmedLengthBetween(2, 45),
+			},
 		},
 		"id": schema.Int64Attribute{
 			Computed:            true,
@@ -450,6 +462,7 @@ func (r *uptimeMonitorTcpResource) Create(ctx context.Context, req resource.Crea
 
 	apiReq := &client.MonitorRequest{
 		Name:                  plan.Name.ValueString(),
+		DisplayName:           plan.DisplayName.ValueStringPointer(),
 		Protocol:              "tcp", // Always TCP for this resource
 		Request:               reqConfig,
 		Interval:              plan.Interval.ValueInt64(),
@@ -475,6 +488,7 @@ func (r *uptimeMonitorTcpResource) Create(ctx context.Context, req resource.Crea
 	// Map API response to state
 	plan.Id = types.Int64Value(apiResp.ID)
 	plan.Name = types.StringValue(apiResp.Name)
+	plan.DisplayName = types.StringPointerValue(apiResp.DisplayName)
 	plan.Interval = types.Int64Value(apiResp.Interval)
 	plan.Timeout = types.Int64Value(apiResp.Timeout)
 	plan.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
@@ -551,6 +565,7 @@ func (r *uptimeMonitorTcpResource) Read(ctx context.Context, req resource.ReadRe
 
 	// Update state from API response
 	state.Name = types.StringValue(apiResp.Name)
+	state.DisplayName = types.StringPointerValue(apiResp.DisplayName)
 	state.Interval = types.Int64Value(apiResp.Interval)
 	state.Timeout = types.Int64Value(apiResp.Timeout)
 	state.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
@@ -648,6 +663,7 @@ func (r *uptimeMonitorTcpResource) Update(ctx context.Context, req resource.Upda
 
 	apiReq := &client.MonitorRequest{
 		Name:                  plan.Name.ValueString(),
+		DisplayName:           plan.DisplayName.ValueStringPointer(),
 		Protocol:              "tcp", // Always TCP for this resource
 		Request:               reqConfig,
 		Interval:              plan.Interval.ValueInt64(),
@@ -672,6 +688,7 @@ func (r *uptimeMonitorTcpResource) Update(ctx context.Context, req resource.Upda
 
 	// Update state from API response
 	plan.Name = types.StringValue(apiResp.Name)
+	plan.DisplayName = types.StringPointerValue(apiResp.DisplayName)
 	plan.Interval = types.Int64Value(apiResp.Interval)
 	plan.Timeout = types.Int64Value(apiResp.Timeout)
 	plan.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
@@ -711,6 +728,7 @@ func (r *uptimeMonitorTcpResource) Update(ctx context.Context, req resource.Upda
 	// Update state from API response
 	plan.Id = types.Int64Value(apiResp.ID)
 	plan.Name = types.StringValue(apiResp.Name)
+	plan.DisplayName = types.StringPointerValue(apiResp.DisplayName)
 	plan.Interval = types.Int64Value(apiResp.Interval)
 	plan.Timeout = types.Int64Value(apiResp.Timeout)
 	plan.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
