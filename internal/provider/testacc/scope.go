@@ -85,10 +85,11 @@ func (s Scope) HTTPMonitorFixture(name string) string {
 	return `
 resource "phare_uptime_monitor_http" "test" {
 	` + s.Attr() + `
-	name     = "` + name + `"
-	interval = 30
-	timeout  = 15000
-	regions  = ["eu-fra-cdg"]
+	name         = "` + name + `"
+	display_name = "Core Monitor"
+	interval     = 30
+	timeout      = 15000
+	regions      = ["eu-fra-cdg"]
 
 	incident_confirmations = 3
 	recovery_confirmations = 2

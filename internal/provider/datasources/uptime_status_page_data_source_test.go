@@ -45,18 +45,14 @@ func TestUptimeStatusPageDataSource_Schema(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, showAttr.Computed)
 
-	// Verify display_name exists on top-level and nested components
+	// Verify display_name is no longer exposed on components, it moved to monitors
 	compAttr, ok := resp.Schema.Attributes["components"].(schema.ListNestedAttribute)
 	require.True(t, ok)
-	topDisplayAttr, ok := compAttr.NestedObject.Attributes["display_name"].(schema.StringAttribute)
-	require.True(t, ok)
-	require.True(t, topDisplayAttr.Computed)
+	require.NotContains(t, compAttr.NestedObject.Attributes, "display_name")
 
 	nestedCompAttr, ok := compAttr.NestedObject.Attributes["components"].(schema.ListNestedAttribute)
 	require.True(t, ok)
-	childDisplayAttr, ok := nestedCompAttr.NestedObject.Attributes["display_name"].(schema.StringAttribute)
-	require.True(t, ok)
-	require.True(t, childDisplayAttr.Computed)
+	require.NotContains(t, nestedCompAttr.NestedObject.Attributes, "display_name")
 }
 
 func TestUptimeStatusPageDataSource_Configure(t *testing.T) {
@@ -110,9 +106,7 @@ func TestUptimeStatusPageDataSource_MapStatusPageToModel(t *testing.T) {
 		require.False(t, model.ShowResponseTimes.ValueBool())
 	})
 
-	t.Run("component display_name mapping", func(t *testing.T) {
-		topDN := "Top Monitor"
-		childDN := "Child Monitor"
+	t.Run("component mapping", func(t *testing.T) {
 		id1 := int64(101)
 		id2 := int64(102)
 		grpName := "Group 1"
@@ -128,7 +122,6 @@ func TestUptimeStatusPageDataSource_MapStatusPageToModel(t *testing.T) {
 				{
 					ComponentableType: "uptime/monitor",
 					ComponentableID:   &id1,
-					DisplayName:       &topDN,
 				},
 				{
 					ComponentableType: "uptime/group",
@@ -137,7 +130,6 @@ func TestUptimeStatusPageDataSource_MapStatusPageToModel(t *testing.T) {
 						{
 							ComponentableType: "uptime/monitor",
 							ComponentableID:   &id2,
-							DisplayName:       &childDN,
 						},
 					},
 				},
@@ -156,11 +148,11 @@ func TestUptimeStatusPageDataSource_MapStatusPageToModel(t *testing.T) {
 
 		// Top monitor check
 		topAttrs := compElements[0].Attributes()
-		require.Equal(t, types.StringValue("Top Monitor"), topAttrs["display_name"])
+		require.Equal(t, types.Int64Value(101), topAttrs["componentable_id"])
 
 		// Group child check
 		groupAttrs := compElements[1].Attributes()
-		require.True(t, groupAttrs["display_name"].(types.String).IsNull())
+		require.Equal(t, types.StringValue("Group 1"), groupAttrs["name"])
 
 		childList := groupAttrs["components"].(types.List)
 		var childElements []types.Object
@@ -168,6 +160,6 @@ func TestUptimeStatusPageDataSource_MapStatusPageToModel(t *testing.T) {
 		require.False(t, diags.HasError())
 		require.Len(t, childElements, 1)
 		childAttrs := childElements[0].Attributes()
-		require.Equal(t, types.StringValue("Child Monitor"), childAttrs["display_name"])
+		require.Equal(t, types.Int64Value(102), childAttrs["componentable_id"])
 	})
 }

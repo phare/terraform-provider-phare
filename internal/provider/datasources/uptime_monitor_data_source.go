@@ -36,6 +36,7 @@ type monitorModel struct {
 	ID                    types.Int64   `tfsdk:"id"`
 	ProjectID             types.Int64   `tfsdk:"project_id"`
 	Name                  types.String  `tfsdk:"name"`
+	DisplayName           types.String  `tfsdk:"display_name"`
 	Protocol              types.String  `tfsdk:"protocol"`
 	Request               types.Object  `tfsdk:"request"`
 	Interval              types.Int64   `tfsdk:"interval"`
@@ -61,6 +62,7 @@ func mapMonitorToModel(ctx context.Context, monitor *client.MonitorResponse, res
 		ID:                    types.Int64Value(monitor.ID),
 		ProjectID:             types.Int64Value(monitor.ProjectID),
 		Name:                  types.StringValue(monitor.Name),
+		DisplayName:           types.StringPointerValue(monitor.DisplayName),
 		Protocol:              types.StringValue(monitor.Protocol),
 		Interval:              types.Int64Value(monitor.Interval),
 		Timeout:               types.Int64Value(monitor.Timeout),
@@ -270,6 +272,10 @@ func monitorSchemaAttributes() map[string]schema.Attribute {
 		"name": schema.StringAttribute{
 			Computed:    true,
 			Description: "Monitor name",
+		},
+		"display_name": schema.StringAttribute{
+			Computed:    true,
+			Description: "Public name of the monitor on status pages, null when the monitor name is used",
 		},
 		"protocol": schema.StringAttribute{
 			Computed:    true,

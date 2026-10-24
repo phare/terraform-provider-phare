@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
 
 	"terraform-provider-phare/internal/client"
@@ -48,6 +49,29 @@ func TestMapMonitorToModel_Tags(t *testing.T) {
 	require.True(t, model.Tags.IsNull())
 }
 
+func TestMapMonitorToModel_DisplayName(t *testing.T) {
+	resp := &datasource.ReadResponse{}
+
+	displayName := "Website"
+	monitor := &client.MonitorResponse{
+		ID:          1,
+		ProjectID:   1,
+		Name:        "mon",
+		DisplayName: &displayName,
+		Protocol:    "http",
+		Regions:     []string{"eu-fra-cdg"},
+	}
+
+	model := mapMonitorToModel(context.Background(), monitor, resp)
+	require.False(t, resp.Diagnostics.HasError())
+	require.Equal(t, types.StringValue("Website"), model.DisplayName)
+
+	monitor.DisplayName = nil
+	model = mapMonitorToModel(context.Background(), monitor, resp)
+	require.False(t, resp.Diagnostics.HasError())
+	require.True(t, model.DisplayName.IsNull())
+}
+
 func TestUptimeMonitorDataSource_Schema(t *testing.T) {
 	d := NewUptimeMonitorDataSource()
 	req := datasource.SchemaRequest{}
@@ -63,6 +87,10 @@ func TestUptimeMonitorDataSource_Schema(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, idAttr.Required)
 	require.False(t, idAttr.Computed)
+
+	displayNameAttr, ok := resp.Schema.Attributes["display_name"].(schema.StringAttribute)
+	require.True(t, ok)
+	require.True(t, displayNameAttr.Computed)
 }
 
 func TestUptimeMonitorDataSource_Configure(t *testing.T) {

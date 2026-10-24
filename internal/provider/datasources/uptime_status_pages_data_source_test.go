@@ -34,7 +34,7 @@ func TestUptimeStatusPagesDataSource_Schema(t *testing.T) {
 	require.NotNil(t, resp.Schema)
 	require.NotNil(t, resp.Schema.Attributes)
 
-	// Verify status_pages attribute exists and contains show_response_times and display_name
+	// Verify status_pages attribute exists and contains show_response_times
 	pagesAttr, ok := resp.Schema.Attributes["status_pages"].(schema.ListNestedAttribute)
 	require.True(t, ok)
 
@@ -42,17 +42,14 @@ func TestUptimeStatusPagesDataSource_Schema(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, showAttr.Computed)
 
+	// Verify display_name is no longer exposed on components, it moved to monitors
 	compAttr, ok := pagesAttr.NestedObject.Attributes["components"].(schema.ListNestedAttribute)
 	require.True(t, ok)
-	topDisplayAttr, ok := compAttr.NestedObject.Attributes["display_name"].(schema.StringAttribute)
-	require.True(t, ok)
-	require.True(t, topDisplayAttr.Computed)
+	require.NotContains(t, compAttr.NestedObject.Attributes, "display_name")
 
 	nestedCompAttr, ok := compAttr.NestedObject.Attributes["components"].(schema.ListNestedAttribute)
 	require.True(t, ok)
-	childDisplayAttr, ok := nestedCompAttr.NestedObject.Attributes["display_name"].(schema.StringAttribute)
-	require.True(t, ok)
-	require.True(t, childDisplayAttr.Computed)
+	require.NotContains(t, nestedCompAttr.NestedObject.Attributes, "display_name")
 }
 
 func TestUptimeStatusPagesDataSource_Configure(t *testing.T) {

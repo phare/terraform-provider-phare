@@ -1,5 +1,6 @@
 resource "phare_uptime_monitor_http" "website" {
-  name = "Website"
+  name         = "Website"
+  display_name = "Marketing Website" # Public name on status pages
 
   request {
     method            = "HEAD"

@@ -1,5 +1,6 @@
 resource "phare_uptime_monitor_tcp" "service" {
-  name = "TCP Service"
+  name         = "TCP Service"
+  display_name = "API Gateway" # Public name on status pages
 
   request {
     host            = "phare.io"

@@ -651,6 +651,51 @@ func TestClientConfigToIcmpRequestModel(t *testing.T) {
 	})
 }
 
+func TestUptimeMonitorIcmpResource_DisplayName(t *testing.T) {
+	ctx := context.Background()
+	r := &uptimeMonitorIcmpResource{}
+
+	regions, diags := types.ListValueFrom(ctx, types.StringType, []string{"eu-deu-fra"})
+	require.False(t, diags.HasError())
+
+	plan := uptimeMonitorIcmpModel{
+		UptimeMonitorBaseModel: UptimeMonitorBaseModel{
+			Name:        types.StringValue("mon"),
+			DisplayName: types.StringNull(),
+			Regions:     regions,
+			Tags:        types.SetNull(types.StringType),
+		},
+		Request: validIcmpRequestModel(),
+	}
+
+	t.Run("null display name is sent as null", func(t *testing.T) {
+		apiReq, ok := r.buildAPIRequest(ctx, &plan, &diags)
+		require.True(t, ok)
+		require.Nil(t, apiReq.DisplayName)
+	})
+
+	t.Run("display name is sent", func(t *testing.T) {
+		withDisplayName := plan
+		withDisplayName.DisplayName = types.StringValue("Website")
+		apiReq, ok := r.buildAPIRequest(ctx, &withDisplayName, &diags)
+		require.True(t, ok)
+		require.NotNil(t, apiReq.DisplayName)
+		require.Equal(t, "Website", *apiReq.DisplayName)
+	})
+
+	t.Run("display name is read from the response", func(t *testing.T) {
+		displayName := "Website"
+		model := plan
+		updateIcmpModelFromResponse(ctx, &client.MonitorResponse{ID: 1, Name: "mon", DisplayName: &displayName}, &model, &diags)
+		require.False(t, diags.HasError())
+		require.Equal(t, types.StringValue("Website"), model.DisplayName)
+
+		updateIcmpModelFromResponse(ctx, &client.MonitorResponse{ID: 1, Name: "mon"}, &model, &diags)
+		require.False(t, diags.HasError())
+		require.True(t, model.DisplayName.IsNull())
+	})
+}
+
 func TestUptimeMonitorIcmpResource_Configure(t *testing.T) {
 	// Create a real client for testing
 	realClient := &client.Client{}

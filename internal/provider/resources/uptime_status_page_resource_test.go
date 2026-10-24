@@ -29,7 +29,7 @@ func stringPtr(v string) *string {
 	return &v
 }
 
-func createComponentWithDisplayName(t *testing.T, compType string, compID *int64, groupName *string, displayName *string, children []NestedComponentModel) ComponentModel {
+func createComponent(t *testing.T, compType string, compID *int64, groupName *string, children []NestedComponentModel) ComponentModel {
 	var idVal types.Int64
 	if compID != nil {
 		idVal = types.Int64Value(*compID)
@@ -42,13 +42,6 @@ func createComponentWithDisplayName(t *testing.T, compType string, compID *int64
 		nameVal = types.StringValue(*groupName)
 	} else {
 		nameVal = types.StringNull()
-	}
-
-	var dnVal types.String
-	if displayName != nil {
-		dnVal = types.StringValue(*displayName)
-	} else {
-		dnVal = types.StringNull()
 	}
 
 	var childrenVal types.List
@@ -64,38 +57,22 @@ func createComponentWithDisplayName(t *testing.T, compType string, compID *int64
 		ComponentableType: types.StringValue(compType),
 		ComponentableID:   idVal,
 		Name:              nameVal,
-		DisplayName:       dnVal,
 		IsExpanded:        types.BoolNull(),
 		Components:        childrenVal,
 	}
 }
 
-func createComponent(t *testing.T, compType string, compID *int64, groupName *string, children []NestedComponentModel) ComponentModel {
-	return createComponentWithDisplayName(t, compType, compID, groupName, nil, children)
-}
-
-func createNestedComponentWithDisplayName(compType string, compID *int64, displayName *string) NestedComponentModel {
+func createNestedComponent(compType string, compID *int64) NestedComponentModel {
 	var idVal types.Int64
 	if compID != nil {
 		idVal = types.Int64Value(*compID)
 	} else {
 		idVal = types.Int64Null()
 	}
-	var dnVal types.String
-	if displayName != nil {
-		dnVal = types.StringValue(*displayName)
-	} else {
-		dnVal = types.StringNull()
-	}
 	return NestedComponentModel{
 		ComponentableType: types.StringValue(compType),
 		ComponentableID:   idVal,
-		DisplayName:       dnVal,
 	}
-}
-
-func createNestedComponent(compType string, compID *int64) NestedComponentModel {
-	return createNestedComponentWithDisplayName(compType, compID, nil)
 }
 
 func createComponentsList(t *testing.T, comps []ComponentModel) types.List {
@@ -162,6 +139,15 @@ func TestUptimeStatusPageResource_Schema(t *testing.T) {
 
 	require.NotNil(t, resp.Schema)
 	require.NotNil(t, resp.Schema.Attributes)
+
+	// display_name moved from components to monitors
+	componentsAttr, ok := resp.Schema.Attributes["components"].(schema.ListNestedAttribute)
+	require.True(t, ok)
+	require.NotContains(t, componentsAttr.NestedObject.Attributes, "display_name")
+
+	nestedComponentsAttr, ok := componentsAttr.NestedObject.Attributes["components"].(schema.ListNestedAttribute)
+	require.True(t, ok)
+	require.NotContains(t, nestedComponentsAttr.NestedObject.Attributes, "display_name")
 }
 
 func TestUptimeStatusPageResource_TagsSchema(t *testing.T) {
@@ -707,7 +693,6 @@ func TestUptimeStatusPageResource_ComponentsValidation(t *testing.T) {
 				"componentable_type": types.StringValue("uptime/monitor"),
 				"componentable_id":   types.Int64Value(1),
 				"name":               types.StringNull(),
-				"display_name":       types.StringNull(),
 				"is_expanded":        types.BoolNull(),
 				"components":         types.ListNull(types.ObjectType{AttrTypes: NestedComponentModelAttrTypes}),
 			}),

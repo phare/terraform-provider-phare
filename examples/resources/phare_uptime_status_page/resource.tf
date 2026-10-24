@@ -59,7 +59,6 @@ resource "phare_uptime_status_page" "main" {
     {
       componentable_type = "uptime/monitor"
       componentable_id   = data.phare_uptime_monitor.web.id
-      display_name       = "Marketing Website"
     },
     {
       componentable_type = "uptime/group"
@@ -69,7 +68,6 @@ resource "phare_uptime_status_page" "main" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = data.phare_uptime_monitor.api.id
-          display_name       = "API Gateway"
         }
       ]
     }

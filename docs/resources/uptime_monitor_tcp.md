@@ -14,7 +14,8 @@ Manages a TCP uptime monitor in Phare. Monitors service availability using TCP c
 
 ```terraform
 resource "phare_uptime_monitor_tcp" "service" {
-  name = "TCP Service"
+  name         = "TCP Service"
+  display_name = "API Gateway" # Public name on status pages
 
   request {
     host            = "phare.io"
@@ -47,6 +48,7 @@ resource "phare_uptime_monitor_tcp" "service" {
 
 ### Optional
 
+- `display_name` (String) Public name of the monitor on status pages, defaults to the monitor `name`
 - `project_scope` (Dynamic) Optional. Project scope for this resource. Accepts either a numeric project ID (e.g., 123) or a string project slug (e.g., "my-project"). Overrides the provider-level project_scope if set. Required when using an organization-scoped API key (starting with pha_org_).
 - `region_threshold` (Number) Number of regions that must fail before an incident is confirmed (1-10)
 - `request` (Block, Optional) TCP request configuration (see [below for nested schema](#nestedblock--request))

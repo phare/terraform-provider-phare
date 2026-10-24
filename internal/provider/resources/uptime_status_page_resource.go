@@ -53,7 +53,6 @@ type ThemeModel struct {
 type NestedComponentModel struct {
 	ComponentableType types.String `tfsdk:"componentable_type"`
 	ComponentableID   types.Int64  `tfsdk:"componentable_id"`
-	DisplayName       types.String `tfsdk:"display_name"`
 }
 
 // ComponentModel represents a component in the status page
@@ -61,7 +60,6 @@ type ComponentModel struct {
 	ComponentableType types.String `tfsdk:"componentable_type"`
 	ComponentableID   types.Int64  `tfsdk:"componentable_id"`
 	Name              types.String `tfsdk:"name"`
-	DisplayName       types.String `tfsdk:"display_name"`
 	IsExpanded        types.Bool   `tfsdk:"is_expanded"`
 	Components        types.List   `tfsdk:"components"`
 }
@@ -175,17 +173,6 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 								helpers.TrimString(),
 							},
 						},
-						"display_name": schema.StringAttribute{
-							Optional:            true,
-							Description:         "Custom display name of the monitor on the status page (for uptime/monitor)",
-							MarkdownDescription: "Custom display name of the monitor on the status page (for uptime/monitor)",
-							PlanModifiers: []planmodifier.String{
-								helpers.TrimString(),
-							},
-							Validators: []validator.String{
-								helpers.TrimmedLengthBetween(1, 45),
-							},
-						},
 						"is_expanded": schema.BoolAttribute{
 							Optional:            true,
 							Computed:            true,
@@ -206,17 +193,6 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 										MarkdownDescription: "Type of component entity (uptime/monitor)",
 										Validators: []validator.String{
 											stringvalidator.OneOf("uptime/monitor"),
-										},
-									},
-									"display_name": schema.StringAttribute{
-										Optional:            true,
-										Description:         "Custom display name of the monitor on the status page",
-										MarkdownDescription: "Custom display name of the monitor on the status page",
-										PlanModifiers: []planmodifier.String{
-											helpers.TrimString(),
-										},
-										Validators: []validator.String{
-											helpers.TrimmedLengthBetween(1, 45),
 										},
 									},
 								},
@@ -492,7 +468,6 @@ var ThemeModelAttrTypes = map[string]attr.Type{
 var NestedComponentModelAttrTypes = map[string]attr.Type{
 	"componentable_type": types.StringType,
 	"componentable_id":   types.Int64Type,
-	"display_name":       types.StringType,
 }
 
 // ComponentModelAttrTypes defines the attribute types for ComponentModel
@@ -500,7 +475,6 @@ var ComponentModelAttrTypes = map[string]attr.Type{
 	"componentable_type": types.StringType,
 	"componentable_id":   types.Int64Type,
 	"name":               types.StringType,
-	"display_name":       types.StringType,
 	"is_expanded":        types.BoolType,
 	"components":         types.ListType{ElemType: types.ObjectType{AttrTypes: NestedComponentModelAttrTypes}},
 }
@@ -615,14 +589,6 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 				}
 
 			case "uptime/group":
-				if !comp.DisplayName.IsNull() && !comp.DisplayName.IsUnknown() {
-					resp.Diagnostics.AddAttributeError(
-						path.Root("components").AtListIndex(i).AtName("display_name"),
-						"Invalid Component Configuration",
-						"display_name is only valid for 'uptime/monitor' components and cannot be used with 'uptime/group'.",
-					)
-				}
-
 				if comp.Name.IsNull() || (!comp.Name.IsUnknown() && utf8.RuneCountInString(strings.TrimSpace(comp.Name.ValueString())) < 1) {
 					resp.Diagnostics.AddAttributeError(
 						path.Root("components").AtListIndex(i).AtName("name"),
@@ -857,7 +823,6 @@ func mapComponentsFromAPIResponse(ctx context.Context, apiComponents []client.St
 			ComponentableType: types.StringValue(comp.ComponentableType),
 			ComponentableID:   types.Int64Null(),
 			Name:              types.StringNull(),
-			DisplayName:       types.StringNull(),
 			IsExpanded:        types.BoolNull(),
 			Components:        types.ListNull(types.ObjectType{AttrTypes: NestedComponentModelAttrTypes}),
 		}
@@ -868,10 +833,6 @@ func mapComponentsFromAPIResponse(ctx context.Context, apiComponents []client.St
 
 		if comp.Name != nil {
 			m.Name = types.StringValue(*comp.Name)
-		}
-
-		if comp.DisplayName != nil {
-			m.DisplayName = types.StringValue(*comp.DisplayName)
 		}
 
 		if comp.IsExpanded != nil {
@@ -885,14 +846,9 @@ func mapComponentsFromAPIResponse(ctx context.Context, apiComponents []client.St
 				if childComp.ComponentableID != nil {
 					nestedID = types.Int64Value(*childComp.ComponentableID)
 				}
-				nestedDisplayName := types.StringNull()
-				if childComp.DisplayName != nil {
-					nestedDisplayName = types.StringValue(*childComp.DisplayName)
-				}
 				nestedModels[j] = NestedComponentModel{
 					ComponentableType: types.StringValue(childComp.ComponentableType),
 					ComponentableID:   nestedID,
-					DisplayName:       nestedDisplayName,
 				}
 			}
 			nestedList, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: NestedComponentModelAttrTypes}, nestedModels)
@@ -939,11 +895,6 @@ func mapComponentsFromPlan(ctx context.Context, componentsList types.List, diagn
 			clientComp.Name = &name
 		}
 
-		if !comp.DisplayName.IsNull() && !comp.DisplayName.IsUnknown() {
-			displayName := comp.DisplayName.ValueString()
-			clientComp.DisplayName = &displayName
-		}
-
 		if !comp.IsExpanded.IsNull() && !comp.IsExpanded.IsUnknown() {
 			isExpanded := comp.IsExpanded.ValueBool()
 			clientComp.IsExpanded = &isExpanded
@@ -963,15 +914,9 @@ func mapComponentsFromPlan(ctx context.Context, componentsList types.List, diagn
 					id := nested.ComponentableID.ValueInt64()
 					childID = &id
 				}
-				var childDisplayName *string
-				if !nested.DisplayName.IsNull() && !nested.DisplayName.IsUnknown() {
-					displayName := nested.DisplayName.ValueString()
-					childDisplayName = &displayName
-				}
 				clientComp.Components[j] = client.StatusPageComponent{
 					ComponentableType: nested.ComponentableType.ValueString(),
 					ComponentableID:   childID,
-					DisplayName:       childDisplayName,
 				}
 			}
 		}

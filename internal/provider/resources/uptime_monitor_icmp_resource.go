@@ -168,6 +168,7 @@ func (r *uptimeMonitorIcmpResource) buildAPIRequest(ctx context.Context, plan *u
 
 	return &client.MonitorRequest{
 		Name:                  plan.Name.ValueString(),
+		DisplayName:           plan.DisplayName.ValueStringPointer(),
 		Protocol:              "icmp",
 		Request:               reqConfig,
 		Interval:              plan.Interval.ValueInt64(),
@@ -183,6 +184,7 @@ func (r *uptimeMonitorIcmpResource) buildAPIRequest(ctx context.Context, plan *u
 func updateIcmpModelFromResponse(ctx context.Context, apiResp *client.MonitorResponse, model *UptimeMonitorIcmpModel, diags *diag.Diagnostics) {
 	model.Id = types.Int64Value(apiResp.ID)
 	model.Name = types.StringValue(apiResp.Name)
+	model.DisplayName = types.StringPointerValue(apiResp.DisplayName)
 	model.Interval = types.Int64Value(apiResp.Interval)
 	model.Timeout = types.Int64Value(apiResp.Timeout)
 	model.IncidentConfirmations = types.Int64Value(apiResp.IncidentConfirmations)
