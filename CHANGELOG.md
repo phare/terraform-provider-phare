@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0]
+
+### Added
+
+- `display_name` parameter on the `phare_uptime_monitor_http`, `phare_uptime_monitor_tcp` and `phare_uptime_monitor_icmp` resources, the public name of the monitor on status pages.
+- `display_name` computed attribute on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources.
+
+### Removed
+
+- **Breaking:** `display_name` on the `components` of the `phare_uptime_status_page` resource and data sources, as the display name now belongs to the monitor and applies to every status page showing it. 
+
 ## [1.0.0] - 2026-10-11
 
 ### Added
