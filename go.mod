@@ -1,6 +1,6 @@
 module terraform-provider-phare
 
-go 1.27.2
+go 1.27.3
 
 tool (
 	github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
