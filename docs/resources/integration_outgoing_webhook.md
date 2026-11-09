@@ -3,12 +3,12 @@
 page_title: "phare_integration_outgoing_webhook Resource - phare"
 subcategory: ""
 description: |-
-  Manages an outgoing webhook integration in Phare, sending alerts as signed HTTP requests to a URL. Integrations belong to the organization and are used by alert rules to send notifications. See docs https://docs.phare.io/integrations/outgoing-webhook.
+  Manages an outgoing webhook integration in Phare, sending alerts as signed HTTP requests to a URL. Integrations belong to the organization and are used by alert rules to send notifications. Creating, updating and deleting integrations requires an organization-scoped API key (starting with pha_org_). See docs https://docs.phare.io/integrations/outgoing-webhook.
 ---
 
 # phare_integration_outgoing_webhook (Resource)
 
-Manages an outgoing webhook integration in Phare, sending alerts as signed HTTP requests to a URL. Integrations belong to the organization and are used by alert rules to send notifications. [See docs](https://docs.phare.io/integrations/outgoing-webhook).
+Manages an outgoing webhook integration in Phare, sending alerts as signed HTTP requests to a URL. Integrations belong to the organization and are used by alert rules to send notifications. Creating, updating and deleting integrations requires an organization-scoped API key (starting with pha_org_). [See docs](https://docs.phare.io/integrations/outgoing-webhook).
 
 ## Example Usage
 

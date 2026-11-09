@@ -3,12 +3,12 @@
 page_title: "phare_integration_sms Resource - phare"
 subcategory: ""
 description: |-
-  Manages an SMS integration in Phare, sending alerts by text message to organization members with a verified phone number. Requires a Scale plan subscription. Integrations belong to the organization and are used by alert rules to send notifications. See docs https://docs.phare.io/integrations/sms.
+  Manages an SMS integration in Phare, sending alerts by text message to organization members with a verified phone number. Requires a Scale plan subscription. Integrations belong to the organization and are used by alert rules to send notifications. Creating, updating and deleting integrations requires an organization-scoped API key (starting with pha_org_). See docs https://docs.phare.io/integrations/sms.
 ---
 
 # phare_integration_sms (Resource)
 
-Manages an SMS integration in Phare, sending alerts by text message to organization members with a verified phone number. Requires a Scale plan subscription. Integrations belong to the organization and are used by alert rules to send notifications. [See docs](https://docs.phare.io/integrations/sms).
+Manages an SMS integration in Phare, sending alerts by text message to organization members with a verified phone number. Requires a Scale plan subscription. Integrations belong to the organization and are used by alert rules to send notifications. Creating, updating and deleting integrations requires an organization-scoped API key (starting with pha_org_). [See docs](https://docs.phare.io/integrations/sms).
 
 ## Example Usage
 

@@ -26,12 +26,9 @@ func sweep() {
 		return
 	}
 
+	// Integrations are swept by the organization-scoped tests, project-scoped
+	// API keys can't delete them
 	if err := testacc.SweepProjectResources(context.Background(), c); err != nil {
 		log.Printf("[WARN] Sweeping leaked resources: %s", err)
-	}
-
-	// After the alert rules, as integrations used by alert rules cannot be deleted
-	if err := testacc.SweepIntegrations(context.Background(), c); err != nil {
-		log.Printf("[WARN] Sweeping leaked integrations: %s", err)
 	}
 }

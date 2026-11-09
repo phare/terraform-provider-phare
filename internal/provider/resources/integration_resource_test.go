@@ -791,6 +791,75 @@ func TestIntegrationResource_ImportState(t *testing.T) {
 	})
 }
 
+func TestIntegrationResource_ModifyPlan(t *testing.T) {
+	ctx := context.Background()
+	s := integrationResourceSchema(t, NewIntegrationOutgoingWebhookResource())
+
+	webhook := func(url string) *integrationOutgoingWebhookModel {
+		return &integrationOutgoingWebhookModel{
+			IntegrationBaseModel: IntegrationBaseModel{
+				Id:        types.Int64Value(42),
+				Name:      types.StringValue("Ops"),
+				Paused:    types.BoolValue(false),
+				CreatedAt: types.StringValue("2026-10-11T00:00:00Z"),
+				UpdatedAt: types.StringValue("2026-10-11T00:00:00Z"),
+			},
+			Settings: &integrationOutgoingWebhookSettingsModel{
+				Url:    types.StringValue(url),
+				Secret: types.StringValue("a-very-secure-secret"),
+			},
+		}
+	}
+
+	state := tfsdk.State{Schema: s}
+	require.False(t, state.Set(ctx, webhook("https://example.com/old")).HasError())
+	changed := tfsdk.Plan{Schema: s}
+	require.False(t, changed.Set(ctx, webhook("https://example.com/new")).HasError())
+	unchanged := tfsdk.Plan{Schema: s, Raw: state.Raw}
+	destroyed := tfsdk.Plan{Schema: s, Raw: tftypes.NewValue(s.Type().TerraformType(ctx), nil)}
+
+	testCases := []struct {
+		name          string
+		projectScoped bool
+		state         tfsdk.State
+		plan          tfsdk.Plan
+		expectError   bool
+	}{
+		{"create with a project-scoped key", true, emptyIntegrationState(s), changed, true},
+		{"update with a project-scoped key", true, state, changed, true},
+		{"delete with a project-scoped key", true, state, destroyed, true},
+		{"unchanged with a project-scoped key", true, state, unchanged, false},
+		{"create with an organization-scoped key", false, emptyIntegrationState(s), changed, false},
+		{"update with an organization-scoped key", false, state, changed, false},
+		{"delete with an organization-scoped key", false, state, destroyed, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := client.NewClient("https://api.phare.io", "token", 10*time.Second, "", "", "1.0", "1.0", tc.projectScoped)
+			require.NoError(t, err)
+
+			r := NewIntegrationOutgoingWebhookResource().(*integrationResource)
+			r.Configure(ctx, resource.ConfigureRequest{ProviderData: c}, &resource.ConfigureResponse{})
+
+			resp := &resource.ModifyPlanResponse{Plan: tc.plan}
+			r.ModifyPlan(ctx, resource.ModifyPlanRequest{State: tc.state, Plan: tc.plan}, resp)
+
+			require.Equal(t, tc.expectError, resp.Diagnostics.HasError(), resp.Diagnostics)
+			if tc.expectError {
+				require.Contains(t, resp.Diagnostics.Errors()[0].Detail(), "organization-scoped API key")
+			}
+		})
+	}
+
+	t.Run("unconfigured provider", func(t *testing.T) {
+		r := NewIntegrationOutgoingWebhookResource().(*integrationResource)
+		resp := &resource.ModifyPlanResponse{Plan: changed}
+		r.ModifyPlan(ctx, resource.ModifyPlanRequest{State: emptyIntegrationState(s), Plan: changed}, resp)
+		require.False(t, resp.Diagnostics.HasError())
+	})
+}
+
 func TestIntegrationResource_Configure(t *testing.T) {
 	r := NewIntegrationOutgoingWebhookResource().(*integrationResource)
 	resp := &resource.ConfigureResponse{}

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `user_agent_secret` of the `phare_uptime_monitor_http` resource is no longer computed: removing it from the configuration removes it from the monitor. A user agent secret set outside of Terraform and absent from the configuration is now shown as a removal in the plan, add it to the configuration to keep it.
 - **Breaking:** header values of the `phare_uptime_monitor_http` resource are sensitive and hidden in the plan output, as one header can't be hidden alone. Outputs referencing them need `sensitive = true`.
 - The ntfy `access_token` of the `phare_integration_ntfy` resource is set to null when the API reports that none is set, to detect a token removed outside of Terraform.
+- The `phare_integration_*` resources fail at plan time when creating, updating or deleting an integration with a project-scoped API key, which the API doesn't allow, instead of failing the apply with a permission error. Unchanged integrations still plan with a project-scoped API key.
 
 ### Deprecated
 
