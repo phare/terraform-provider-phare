@@ -452,6 +452,26 @@ func TestIntegrationResources_ReadSettings(t *testing.T) {
 		require.Equal(t, testNtfyAccessToken, model.Settings.AccessToken.ValueString())
 	})
 
+	t.Run("ntfy keeps the access token while one is set", func(t *testing.T) {
+		model := &integrationNtfyModel{Settings: &integrationNtfySettingsModel{
+			AccessToken: types.StringValue(testNtfyAccessToken),
+		}}
+		var diags diag.Diagnostics
+		model.readSettings(ctx, json.RawMessage(`{"hostname":"ntfy.sh","topic":"alerts","access_token_enabled":true}`), &diags)
+		require.False(t, diags.HasError())
+		require.Equal(t, testNtfyAccessToken, model.Settings.AccessToken.ValueString())
+	})
+
+	t.Run("ntfy detects an access token removed outside of Terraform", func(t *testing.T) {
+		model := &integrationNtfyModel{Settings: &integrationNtfySettingsModel{
+			AccessToken: types.StringValue(testNtfyAccessToken),
+		}}
+		var diags diag.Diagnostics
+		model.readSettings(ctx, json.RawMessage(`{"hostname":"ntfy.sh","topic":"alerts","access_token_enabled":false}`), &diags)
+		require.False(t, diags.HasError())
+		require.True(t, model.Settings.AccessToken.IsNull())
+	})
+
 	t.Run("outgoing webhook keeps the secret", func(t *testing.T) {
 		model := &integrationOutgoingWebhookModel{Settings: &integrationOutgoingWebhookSettingsModel{
 			Url:    types.StringValue("https://example.com/old"),

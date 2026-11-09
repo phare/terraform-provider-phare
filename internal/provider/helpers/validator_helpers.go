@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 type trimmedLengthBetweenValidator struct {
@@ -239,4 +240,52 @@ func (v hasPrefixValidator) ValidateString(ctx context.Context, req validator.St
 // Unlike stringvalidator.RegexMatches, the error does not include the value, so it can be used on sensitive attributes.
 func HasPrefix(prefix string) validator.String {
 	return hasPrefixValidator{prefix: prefix}
+}
+
+type uniqueAttributeIgnoreCaseValidator struct {
+	attribute string
+}
+
+func (v uniqueAttributeIgnoreCaseValidator) Description(ctx context.Context) string {
+	return fmt.Sprintf("%s must be unique across the list, ignoring case", v.attribute)
+}
+
+func (v uniqueAttributeIgnoreCaseValidator) MarkdownDescription(ctx context.Context) string {
+	return fmt.Sprintf("`%s` must be unique across the list, ignoring case", v.attribute)
+}
+
+func (v uniqueAttributeIgnoreCaseValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	seen := make(map[string]struct{})
+	for i, element := range req.ConfigValue.Elements() {
+		object, ok := element.(basetypes.ObjectValue)
+		if !ok || object.IsNull() || object.IsUnknown() {
+			continue
+		}
+
+		value, ok := object.Attributes()[v.attribute].(basetypes.StringValue)
+		if !ok || value.IsNull() || value.IsUnknown() {
+			continue
+		}
+
+		key := strings.ToLower(strings.TrimSpace(value.ValueString()))
+		if _, duplicate := seen[key]; duplicate {
+			resp.Diagnostics.AddAttributeError(
+				req.Path.AtListIndex(i).AtName(v.attribute),
+				"Duplicate Value",
+				fmt.Sprintf("%q is used more than once, %s must be unique, ignoring case.", value.ValueString(), v.attribute),
+			)
+			continue
+		}
+		seen[key] = struct{}{}
+	}
+}
+
+// UniqueAttributeIgnoreCase returns a validator that checks that a string attribute of the
+// objects of a list is unique across the list, ignoring case and surrounding whitespace.
+func UniqueAttributeIgnoreCase(attribute string) validator.List {
+	return uniqueAttributeIgnoreCaseValidator{attribute: attribute}
 }

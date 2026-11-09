@@ -96,10 +96,14 @@ func (m *integrationNtfyModel) readSettings(ctx context.Context, raw json.RawMes
 		return
 	}
 
-	// The access token is never returned by the API and is kept from the prior model
+	// The access token is never returned by the API and is kept from the prior model,
+	// unless the API reports that none is set, which detects a token removed outside of Terraform
 	if m.Settings == nil {
 		m.Settings = &integrationNtfySettingsModel{}
 	}
 	m.Settings.Hostname = types.StringValue(settings.Hostname)
 	m.Settings.Topic = types.StringValue(settings.Topic)
+	if settings.AccessTokenEnabled != nil && !*settings.AccessTokenEnabled {
+		m.Settings.AccessToken = types.StringNull()
+	}
 }

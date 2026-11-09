@@ -56,6 +56,13 @@ type monitorModel struct {
 	UpdatedAt             types.String  `tfsdk:"updated_at"`
 }
 
+// monitorHeaderAttrTypes defines the attribute types of the HTTP monitor headers
+var monitorHeaderAttrTypes = map[string]attr.Type{
+	"name":   types.StringType,
+	"value":  types.StringType,
+	"secret": types.BoolType,
+}
+
 // mapMonitorToModel maps an API monitor response to the shared monitor model
 func mapMonitorToModel(ctx context.Context, monitor *client.MonitorResponse, resp *datasource.ReadResponse) monitorModel {
 	model := monitorModel{
@@ -104,28 +111,26 @@ func mapMonitorToModel(ctx context.Context, monitor *client.MonitorResponse, res
 	} else {
 		requestAttrs["follow_redirects"] = types.BoolNull()
 	}
-	if monitor.Request.UserAgentSecret != nil {
-		requestAttrs["user_agent_secret"] = types.StringValue(*monitor.Request.UserAgentSecret)
-	} else {
-		requestAttrs["user_agent_secret"] = types.StringNull()
+	// The API never returns the user agent secret, only whether one is set
+	requestAttrs["user_agent_secret"] = types.StringPointerValue(monitor.Request.UserAgentSecret)
+	enabled := monitor.Request.UserAgentSecretEnabled
+	if enabled == nil && monitor.Request.UserAgentSecret != nil {
+		// Returned by API versions before secrets were hidden
+		enabled = new(true)
 	}
+	requestAttrs["user_agent_secret_enabled"] = types.BoolPointerValue(enabled)
 
-	// Map headers
+	// Map headers, the API never returns the value of a secret header
+	headerType := types.ObjectType{AttrTypes: monitorHeaderAttrTypes}
 	if len(monitor.Request.Headers) > 0 {
-		headerType := types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"name":  types.StringType,
-				"value": types.StringType,
-			},
-		}
-
 		headerElements := make([]attr.Value, len(monitor.Request.Headers))
 		for i, header := range monitor.Request.Headers {
 			headerObj, diags := types.ObjectValue(
 				headerType.AttrTypes,
 				map[string]attr.Value{
-					"name":  types.StringValue(header.Name),
-					"value": types.StringValue(header.Value),
+					"name":   types.StringValue(header.Name),
+					"value":  types.StringPointerValue(header.Value),
+					"secret": types.BoolValue(header.Secret != nil && *header.Secret),
 				},
 			)
 			resp.Diagnostics.Append(diags...)
@@ -142,12 +147,7 @@ func mapMonitorToModel(ctx context.Context, monitor *client.MonitorResponse, res
 		}
 		requestAttrs["headers"] = headersList
 	} else {
-		requestAttrs["headers"] = types.ListNull(types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"name":  types.StringType,
-				"value": types.StringType,
-			},
-		})
+		requestAttrs["headers"] = types.ListNull(headerType)
 	}
 
 	// TCP / ICMP fields
@@ -177,23 +177,17 @@ func mapMonitorToModel(ctx context.Context, monitor *client.MonitorResponse, res
 
 	// Create the request object
 	requestAttrTypes := map[string]attr.Type{
-		"url":               types.StringType,
-		"method":            types.StringType,
-		"body":              types.StringType,
-		"tls_skip_verify":   types.BoolType,
-		"follow_redirects":  types.BoolType,
-		"user_agent_secret": types.StringType,
-		"headers": types.ListType{
-			ElemType: types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"name":  types.StringType,
-					"value": types.StringType,
-				},
-			},
-		},
-		"host":       types.StringType,
-		"port":       types.Int64Type,
-		"connection": types.StringType,
+		"url":                       types.StringType,
+		"method":                    types.StringType,
+		"body":                      types.StringType,
+		"tls_skip_verify":           types.BoolType,
+		"follow_redirects":          types.BoolType,
+		"user_agent_secret":         types.StringType,
+		"user_agent_secret_enabled": types.BoolType,
+		"headers":                   types.ListType{ElemType: headerType},
+		"host":                      types.StringType,
+		"port":                      types.Int64Type,
+		"connection":                types.StringType,
 	}
 
 	requestObj, diags := types.ObjectValue(requestAttrTypes, requestAttrs)
@@ -307,8 +301,14 @@ func monitorSchemaAttributes() map[string]schema.Attribute {
 					Description: "Whether to follow HTTP redirects",
 				},
 				"user_agent_secret": schema.StringAttribute{
+					Computed:           true,
+					Sensitive:          true,
+					Description:        "Always null, the API never returns the user agent secret. Use user_agent_secret_enabled instead.",
+					DeprecationMessage: "The API never returns the user agent secret anymore, this attribute is always null and will be removed in a future version. Use user_agent_secret_enabled instead.",
+				},
+				"user_agent_secret_enabled": schema.BoolAttribute{
 					Computed:    true,
-					Description: "User agent secret for request verification",
+					Description: "Whether a user agent secret is set (for HTTP monitors)",
 				},
 				"headers": schema.ListNestedAttribute{
 					Computed:    true,
@@ -321,7 +321,11 @@ func monitorSchemaAttributes() map[string]schema.Attribute {
 							},
 							"value": schema.StringAttribute{
 								Computed:    true,
-								Description: "Header value",
+								Description: "Header value, null for a secret header as the API never returns its value",
+							},
+							"secret": schema.BoolAttribute{
+								Computed:    true,
+								Description: "Whether the header value is a secret, encrypted by Phare and never returned by the API",
 							},
 						},
 					},

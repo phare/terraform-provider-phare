@@ -41,6 +41,10 @@ func TestAccUptimeMonitorHttpResource(t *testing.T) {
 	testacc.RunUptimeMonitorHttpResource(t, testacc.ProjectScope)
 }
 
+func TestAccUptimeMonitorHttpResourceSecrets(t *testing.T) {
+	testacc.RunUptimeMonitorHttpResourceSecrets(t, testacc.ProjectScope)
+}
+
 func TestAccUptimeMonitorIcmpResource(t *testing.T) {
 	testacc.RunUptimeMonitorIcmpResource(t, testacc.ProjectScope)
 }

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -25,15 +26,21 @@ type MonitorRequest struct {
 
 // MonitorRequestConfig represents the request configuration for a monitor.
 // This is a flexible structure that can represent HTTP or TCP requests.
+//
+// The API never returns the user agent secret and keeps the current one when it
+// is omitted, a nil UserAgentSecret is omitted unless RemoveUserAgentSecret is
+// set to send a null secret removing it. UserAgentSecretEnabled is only returned.
 type MonitorRequestConfig struct {
 	// HTTP fields
-	Method          *string                `json:"method,omitempty"`
-	URL             *string                `json:"url,omitempty"`
-	TLSSkipVerify   *bool                  `json:"tls_skip_verify,omitempty"`
-	Body            *string                `json:"body,omitempty"`
-	FollowRedirects *bool                  `json:"follow_redirects,omitempty"`
-	UserAgentSecret *string                `json:"user_agent_secret,omitempty"`
-	Headers         []MonitorRequestHeader `json:"headers,omitempty"`
+	Method                 *string                `json:"method,omitempty"`
+	URL                    *string                `json:"url,omitempty"`
+	TLSSkipVerify          *bool                  `json:"tls_skip_verify,omitempty"`
+	Body                   *string                `json:"body,omitempty"`
+	FollowRedirects        *bool                  `json:"follow_redirects,omitempty"`
+	UserAgentSecret        *string                `json:"user_agent_secret,omitempty"`
+	RemoveUserAgentSecret  bool                   `json:"-"`
+	UserAgentSecretEnabled *bool                  `json:"user_agent_secret_enabled,omitempty"`
+	Headers                []MonitorRequestHeader `json:"headers,omitempty"`
 
 	// TCP fields
 	Host       *string `json:"host,omitempty"`
@@ -41,10 +48,32 @@ type MonitorRequestConfig struct {
 	Connection *string `json:"connection,omitempty"`
 }
 
+// MarshalJSON sends a null user agent secret when RemoveUserAgentSecret is set,
+// the read only UserAgentSecretEnabled is never sent.
+func (c MonitorRequestConfig) MarshalJSON() ([]byte, error) {
+	// The alias has the fields but not the methods, avoiding a recursive call
+	type alias MonitorRequestConfig
+	body := alias(c)
+	body.UserAgentSecretEnabled = nil
+
+	if body.UserAgentSecret != nil || !body.RemoveUserAgentSecret {
+		return json.Marshal(body)
+	}
+
+	// The shallower field takes precedence over the embedded one with the same JSON name
+	return json.Marshal(struct {
+		alias
+		UserAgentSecret *string `json:"user_agent_secret"`
+	}{alias: body})
+}
+
 // MonitorRequestHeader represents a custom HTTP header.
+// The API never returns the value of a secret header. On update, a header sent
+// without Secret keeps the flag of the stored header with the same name.
 type MonitorRequestHeader struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name   string  `json:"name"`
+	Value  *string `json:"value,omitempty"`
+	Secret *bool   `json:"secret,omitempty"`
 }
 
 // MonitorResponse represents a monitor response from the API.

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -52,6 +54,53 @@ func TestTrimmedLengthBetween(t *testing.T) {
 				require.True(t, resp.Diagnostics.HasError())
 			} else {
 				require.False(t, resp.Diagnostics.HasError())
+			}
+		})
+	}
+}
+
+func TestUniqueAttributeIgnoreCase(t *testing.T) {
+	v := UniqueAttributeIgnoreCase("name")
+	require.NotEmpty(t, v.Description(context.Background()))
+	require.NotEmpty(t, v.MarkdownDescription(context.Background()))
+
+	attrTypes := map[string]attr.Type{"name": types.StringType, "value": types.StringType}
+	list := func(names ...types.String) types.List {
+		elements := make([]attr.Value, len(names))
+		for i, name := range names {
+			elements[i] = types.ObjectValueMust(attrTypes, map[string]attr.Value{"name": name, "value": types.StringValue("v")})
+		}
+		return types.ListValueMust(types.ObjectType{AttrTypes: attrTypes}, elements)
+	}
+
+	testCases := []struct {
+		name        string
+		val         types.List
+		errorPaths  []path.Path
+		expectError bool
+	}{
+		{"null is skipped", types.ListNull(types.ObjectType{AttrTypes: attrTypes}), nil, false},
+		{"unknown is skipped", types.ListUnknown(types.ObjectType{AttrTypes: attrTypes}), nil, false},
+		{"unique names", list(types.StringValue("X-One"), types.StringValue("X-Two")), nil, false},
+		{"unknown names are skipped", list(types.StringUnknown(), types.StringUnknown()), nil, false},
+		{"duplicate names", list(types.StringValue("X-One"), types.StringValue("X-One")), []path.Path{path.Root("test").AtListIndex(1).AtName("name")}, true},
+		{"duplicate names ignoring case", list(types.StringValue("Authorization"), types.StringValue("X-Two"), types.StringValue("authorization ")), []path.Path{path.Root("test").AtListIndex(2).AtName("name")}, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.ListRequest{
+				Path:        path.Root("test"),
+				ConfigValue: tc.val,
+			}
+			resp := &validator.ListResponse{}
+			v.ValidateList(context.Background(), req, resp)
+
+			require.Equal(t, tc.expectError, resp.Diagnostics.HasError())
+			for i, errorPath := range tc.errorPaths {
+				withPath, ok := resp.Diagnostics.Errors()[i].(diag.DiagnosticWithPath)
+				require.True(t, ok)
+				require.Equal(t, errorPath, withPath.Path())
 			}
 		})
 	}

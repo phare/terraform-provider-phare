@@ -3,12 +3,12 @@
 page_title: "phare_uptime_monitor_http Resource - phare"
 subcategory: ""
 description: |-
-  Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and performance using HTTP/HTTPS requests.
+  Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and performance using HTTP/HTTPS requests. The API never returns the user agent secret and the values of secret headers: an imported monitor has none in its state, so the first plan after the import shows them as changes, and applying it sets them again.
 ---
 
 # phare_uptime_monitor_http (Resource)
 
-Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and performance using HTTP/HTTPS requests.
+Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and performance using HTTP/HTTPS requests. The API never returns the user agent secret and the values of secret headers: an imported monitor has none in its state, so the first plan after the import shows them as changes, and applying it sets them again.
 
 ## Example Usage
 
@@ -22,11 +22,17 @@ resource "phare_uptime_monitor_http" "website" {
     url               = "https://docs.phare.io/introduction"
     tls_skip_verify   = false
     follow_redirects  = true
-    user_agent_secret = "definitely-not-a-bot"
+    user_agent_secret = "definitely-not-a-bot" # Never returned by the API
 
     headers {
       name  = "X-Phare-Says"
       value = "Hello world!"
+    }
+
+    headers {
+      name   = "Authorization"
+      value  = "Bearer my-api-token"
+      secret = true # Encrypted by Phare, its value is never returned by the API
     }
   }
 
@@ -112,9 +118,9 @@ Optional:
 
 - `body` (String) Request body for POST, PUT, PATCH
 - `follow_redirects` (Boolean) Follow HTTP redirects (default: true)
-- `headers` (Block List) Additional HTTP headers (max 10), [see docs](https://docs.phare.io/uptime/monitors#headers) (see [below for nested schema](#nestedblock--request--headers))
+- `headers` (Block List) Additional HTTP headers (max 10), names are unique ignoring case, [see docs](https://docs.phare.io/uptime/monitors#headers) (see [below for nested schema](#nestedblock--request--headers))
 - `tls_skip_verify` (Boolean) Skip TLS certificate verification (default: false)
-- `user_agent_secret` (String, Sensitive) Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent)
+- `user_agent_secret` (String, Sensitive) Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent). The API never returns this value, it is kept from the Terraform state and changes made outside of Terraform are not detected.
 
 <a id="nestedblock--request--headers"></a>
 ### Nested Schema for `request.headers`
@@ -122,7 +128,11 @@ Optional:
 Required:
 
 - `name` (String) Header name
-- `value` (String) Header value
+- `value` (String, Sensitive) Header value. The API never returns the value of a secret header, it is kept from the Terraform state and changes made outside of Terraform are not detected.
+
+Optional:
+
+- `secret` (Boolean) Whether the header value is a secret, encrypted by Phare and never returned by the API. When left out, a header keeps its current flag, `false` for a new header, and only an explicit `false` makes a secret header public again.
 
 
 

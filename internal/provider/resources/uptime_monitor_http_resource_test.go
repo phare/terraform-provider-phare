@@ -994,8 +994,9 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 		headerElements := make([]attr.Value, 11)
 		for i := 0; i < 11; i++ {
 			headerElements[i] = types.ObjectValueMust(HeaderModelAttrTypes, map[string]attr.Value{
-				"name":  types.StringValue(fmt.Sprintf("X-Header-%d", i)),
-				"value": types.StringValue("val"),
+				"name":   types.StringValue(fmt.Sprintf("X-Header-%d", i)),
+				"value":  types.StringValue("val"),
+				"secret": types.BoolValue(false),
 			})
 		}
 		reqModel.Headers = types.ListValueMust(types.ObjectType{AttrTypes: HeaderModelAttrTypes}, headerElements)
@@ -1032,8 +1033,9 @@ func TestUptimeMonitorHttpResource_ModifyPlan(t *testing.T) {
 		headerElements := make([]attr.Value, 10)
 		for i := 0; i < 10; i++ {
 			headerElements[i] = types.ObjectValueMust(HeaderModelAttrTypes, map[string]attr.Value{
-				"name":  types.StringValue(fmt.Sprintf("X-Header-%d", i)),
-				"value": types.StringValue("val"),
+				"name":   types.StringValue(fmt.Sprintf("X-Header-%d", i)),
+				"value":  types.StringValue("val"),
+				"secret": types.BoolValue(false),
 			})
 		}
 		reqModel.Headers = types.ListValueMust(types.ObjectType{AttrTypes: HeaderModelAttrTypes}, headerElements)

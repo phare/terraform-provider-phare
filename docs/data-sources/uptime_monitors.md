@@ -73,7 +73,8 @@ Read-Only:
 - `port` (Number) Port to connect to (for TCP monitors)
 - `tls_skip_verify` (Boolean) Whether to skip TLS certificate verification
 - `url` (String) URL being monitored (for HTTP/HTTPS monitors)
-- `user_agent_secret` (String) User agent secret for request verification
+- `user_agent_secret` (String, Sensitive, Deprecated) Always null, the API never returns the user agent secret. Use user_agent_secret_enabled instead.
+- `user_agent_secret_enabled` (Boolean) Whether a user agent secret is set (for HTTP monitors)
 
 <a id="nestedatt--monitors--request--headers"></a>
 ### Nested Schema for `monitors.request.headers`
@@ -81,4 +82,5 @@ Read-Only:
 Read-Only:
 
 - `name` (String) Header name
-- `value` (String) Header value
+- `secret` (Boolean) Whether the header value is a secret, encrypted by Phare and never returned by the API
+- `value` (String) Header value, null for a secret header as the API never returns its value

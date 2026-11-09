@@ -72,6 +72,51 @@ func TestMapMonitorToModel_DisplayName(t *testing.T) {
 	require.True(t, model.DisplayName.IsNull())
 }
 
+func TestMapMonitorToModel_Secrets(t *testing.T) {
+	ctx := context.Background()
+	resp := &datasource.ReadResponse{}
+
+	monitor := &client.MonitorResponse{
+		ID:       1,
+		Name:     "mon",
+		Protocol: "http",
+		Request: client.MonitorRequestConfig{
+			UserAgentSecretEnabled: new(true),
+			Headers: []client.MonitorRequestHeader{
+				{Name: "Authorization", Secret: new(true)},
+				{Name: "X-Public", Value: new("hello"), Secret: new(false)},
+			},
+		},
+	}
+
+	model := mapMonitorToModel(ctx, monitor, resp)
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+
+	request := model.Request.Attributes()
+	require.True(t, request["user_agent_secret"].IsNull())
+	require.Equal(t, types.BoolValue(true), request["user_agent_secret_enabled"])
+
+	headers := request["headers"].(types.List).Elements()
+	require.Len(t, headers, 2)
+
+	secret := headers[0].(types.Object).Attributes()
+	require.Equal(t, types.StringValue("Authorization"), secret["name"])
+	require.True(t, secret["value"].IsNull())
+	require.Equal(t, types.BoolValue(true), secret["secret"])
+
+	public := headers[1].(types.Object).Attributes()
+	require.Equal(t, types.StringValue("hello"), public["value"])
+	require.Equal(t, types.BoolValue(false), public["secret"])
+
+	t.Run("monitors of other protocols have no user agent secret flag", func(t *testing.T) {
+		monitor := &client.MonitorResponse{ID: 2, Name: "tcp", Protocol: "tcp", Request: client.MonitorRequestConfig{Host: new("example.com")}}
+		model := mapMonitorToModel(ctx, monitor, resp)
+		require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+		require.True(t, model.Request.Attributes()["user_agent_secret_enabled"].IsNull())
+		require.True(t, model.Request.Attributes()["headers"].IsNull())
+	})
+}
+
 func TestUptimeMonitorDataSource_Schema(t *testing.T) {
 	d := NewUptimeMonitorDataSource()
 	req := datasource.SchemaRequest{}

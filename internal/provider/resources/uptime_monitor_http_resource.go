@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -24,15 +25,20 @@ import (
 
 // HeaderModel represents a header configuration for HTTP requests
 type HeaderModel struct {
-	Name  types.String `tfsdk:"name"`
-	Value types.String `tfsdk:"value"`
+	Name   types.String `tfsdk:"name"`
+	Value  types.String `tfsdk:"value"`
+	Secret types.Bool   `tfsdk:"secret"`
 }
 
 // HeaderModelAttrTypes defines the attribute types for HeaderModel
 var HeaderModelAttrTypes = map[string]attr.Type{
-	"name":  types.StringType,
-	"value": types.StringType,
+	"name":   types.StringType,
+	"value":  types.StringType,
+	"secret": types.BoolType,
 }
+
+// uptimeMonitorSecretNote is appended to the description of the request secrets the API never returns
+const uptimeMonitorSecretNote = " The API never returns this value, it is kept from the Terraform state and changes made outside of Terraform are not detected."
 
 // StatusCodeAssertionModel represents a status code assertion for HTTP monitors
 type StatusCodeAssertionModel struct {
@@ -166,10 +172,9 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 					},
 					"user_agent_secret": schema.StringAttribute{
 						Optional:            true,
-						Computed:            true,
 						Sensitive:           true,
-						Description:         "Secret value in User-Agent header for authentication",
-						MarkdownDescription: "Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent)",
+						Description:         "Secret value in User-Agent header for authentication." + uptimeMonitorSecretNote,
+						MarkdownDescription: "Secret value in User-Agent header for authentication, [see docs](https://docs.phare.io/uptime/monitors#user-agent)." + uptimeMonitorSecretNote,
 						PlanModifiers: []planmodifier.String{
 							helpers.TrimString(),
 						},
@@ -196,9 +201,11 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 									},
 								},
 								"value": schema.StringAttribute{
-									Required:            true,
-									Description:         "Header value",
-									MarkdownDescription: "Header value",
+									Required: true,
+									// The framework can't hide a single list element, so public header values are hidden too
+									Sensitive:           true,
+									Description:         "Header value. The API never returns the value of a secret header, it is kept from the Terraform state and changes made outside of Terraform are not detected.",
+									MarkdownDescription: "Header value. The API never returns the value of a secret header, it is kept from the Terraform state and changes made outside of Terraform are not detected.",
 									PlanModifiers: []planmodifier.String{
 										helpers.TrimString(),
 									},
@@ -206,10 +213,21 @@ func UptimeMonitorHttpResourceSchema(ctx context.Context) schema.Schema {
 										helpers.TrimmedLengthAtMost(1024),
 									},
 								},
+								// No default: a header without it keeps the flag stored by Phare, as the
+								// platform flags existing credential headers as secret on its own
+								"secret": schema.BoolAttribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Whether the header value is a secret, encrypted by Phare and never returned by the API. When left out, a header keeps its current flag, false for a new header, and only an explicit false makes a secret header public again.",
+									MarkdownDescription: "Whether the header value is a secret, encrypted by Phare and never returned by the API. When left out, a header keeps its current flag, `false` for a new header, and only an explicit `false` makes a secret header public again.",
+								},
 							},
 						},
-						Description:         "Additional HTTP headers (max 10)",
-						MarkdownDescription: "Additional HTTP headers (max 10), [see docs](https://docs.phare.io/uptime/monitors#headers)",
+						Description:         "Additional HTTP headers (max 10), names are unique ignoring case",
+						MarkdownDescription: "Additional HTTP headers (max 10), names are unique ignoring case, [see docs](https://docs.phare.io/uptime/monitors#headers)",
+						Validators: []validator.List{
+							helpers.UniqueAttributeIgnoreCase("name"),
+						},
 					},
 				},
 				Description:         "HTTP/HTTPS request configuration",
@@ -347,8 +365,10 @@ func (r *uptimeMonitorHttpResource) Schema(ctx context.Context, req resource.Sch
 	resourceSchema := UptimeMonitorHttpResourceSchema(ctx)
 
 	// Add description to the resource
-	resourceSchema.Description = "Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and performance using HTTP/HTTPS requests."
-	resourceSchema.MarkdownDescription = "Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and performance using HTTP/HTTPS requests."
+	description := "Manages an HTTP/HTTPS uptime monitor in Phare. Monitors website availability and performance using HTTP/HTTPS requests."
+	importNote := " The API never returns the user agent secret and the values of secret headers: an imported monitor has none in its state, so the first plan after the import shows them as changes, and applying it sets them again."
+	resourceSchema.Description = description + importNote
+	resourceSchema.MarkdownDescription = description + importNote
 
 	// Add common validators
 	AddCommonValidators(ctx, &resourceSchema)
@@ -417,6 +437,25 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 				"Cannot configure more than 10 HTTP headers",
 			)
 		}
+
+		// Plan the secret flag of the headers that leave it out of the configuration,
+		// without stopping the validations below on an error
+		var config, state uptimeMonitorHttpModel
+		var secretDiags diag.Diagnostics
+		if !req.Config.Raw.IsNull() {
+			secretDiags.Append(req.Config.Get(ctx, &config)...)
+		}
+		if !req.State.Raw.IsNull() {
+			secretDiags.Append(req.State.Get(ctx, &state)...)
+		}
+		if !secretDiags.HasError() {
+			headers, diags := planHeaderSecrets(ctx, plan.Request, config.Request, state.Request)
+			secretDiags.Append(diags...)
+			if !secretDiags.HasError() && !headers.Equal(plan.Request.Headers) {
+				secretDiags.Append(resp.Plan.SetAttribute(ctx, path.Root("request").AtName("headers"), headers)...)
+			}
+		}
+		resp.Diagnostics.Append(secretDiags...)
 	}
 
 	// Validate success_assertions block is provided
@@ -471,8 +510,72 @@ func (r *uptimeMonitorHttpResource) ModifyPlan(ctx context.Context, req resource
 	}
 }
 
-// Helper function to convert Terraform HTTP request model to client request config
-func httpRequestModelToClientConfig(ctx context.Context, request *HttpRequestModel) (client.MonitorRequestConfig, error) {
+// headersByName returns the known headers of a request model by lowercase name, as header
+// names are case-insensitive and the API normalizes their case
+func headersByName(ctx context.Context, request *HttpRequestModel) (map[string]HeaderModel, diag.Diagnostics) {
+	byName := make(map[string]HeaderModel)
+	if request == nil || request.Headers.IsNull() || request.Headers.IsUnknown() {
+		return byName, nil
+	}
+
+	var headers []HeaderModel
+	diags := request.Headers.ElementsAs(ctx, &headers, false)
+	for _, h := range headers {
+		if !h.Name.IsNull() && !h.Name.IsUnknown() {
+			byName[strings.ToLower(h.Name.ValueString())] = h
+		}
+	}
+
+	return byName, diags
+}
+
+// planHeaderSecrets returns the planned headers with the secret flag of the headers that leave it
+// out of the configuration: the flag of the header with the same name in the prior state, as the
+// API keeps the stored flag, or false for a new header. Only an explicit false makes a secret
+// header public. The framework plans these flags as unknown, by list index, as soon as the monitor
+// changes; matching by name keeps the plan accurate when headers are added, removed or reordered.
+func planHeaderSecrets(ctx context.Context, plan, config, state *HttpRequestModel) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if plan == nil || plan.Headers.IsNull() || plan.Headers.IsUnknown() {
+		if plan == nil {
+			return types.ListNull(types.ObjectType{AttrTypes: HeaderModelAttrTypes}), nil
+		}
+		return plan.Headers, nil
+	}
+
+	var planHeaders, configHeaders []HeaderModel
+	diags.Append(plan.Headers.ElementsAs(ctx, &planHeaders, false)...)
+	if config != nil && !config.Headers.IsNull() && !config.Headers.IsUnknown() {
+		diags.Append(config.Headers.ElementsAs(ctx, &configHeaders, false)...)
+	}
+	priorHeaders, priorDiags := headersByName(ctx, state)
+	diags.Append(priorDiags...)
+	if diags.HasError() {
+		return plan.Headers, diags
+	}
+
+	for i, h := range planHeaders {
+		// Set in the configuration, or kept from the prior state when the monitor doesn't change
+		if (i < len(configHeaders) && !configHeaders[i].Secret.IsNull()) || !h.Secret.IsUnknown() {
+			continue
+		}
+		if h.Name.IsUnknown() {
+			continue
+		}
+
+		prior, ok := priorHeaders[strings.ToLower(h.Name.ValueString())]
+		planHeaders[i].Secret = types.BoolValue(ok && prior.Secret.ValueBool())
+	}
+
+	headers, listDiags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: HeaderModelAttrTypes}, planHeaders)
+	diags.Append(listDiags...)
+
+	return headers, diags
+}
+
+// Helper function to convert Terraform HTTP request model to client request config,
+// prior is the request of the prior state on update and nil on create
+func httpRequestModelToClientConfig(ctx context.Context, request, prior *HttpRequestModel) (client.MonitorRequestConfig, error) {
 	config := client.MonitorRequestConfig{}
 
 	if request == nil {
@@ -505,31 +608,42 @@ func httpRequestModelToClientConfig(ctx context.Context, request *HttpRequestMod
 		config.TLSSkipVerify = &b
 	}
 
+	// The API keeps the user agent secret when it is omitted, it is only removed when it is
+	// removed from the configuration: a secret unknown to Terraform (imported or set outside
+	// of Terraform) is kept, as the plan doesn't show its removal
 	if !request.UserAgentSecret.IsNull() && !request.UserAgentSecret.IsUnknown() {
 		s := request.UserAgentSecret.ValueString()
 		config.UserAgentSecret = &s
+	} else if request.UserAgentSecret.IsNull() && prior != nil && !prior.UserAgentSecret.IsNull() {
+		config.RemoveUserAgentSecret = true
 	}
 
-	// Headers
+	// Headers are always sent with their value, the API keeps the encrypted value of a secret
+	// header when it doesn't change. A header without a secret flag keeps its current flag.
 	if !request.Headers.IsNull() && !request.Headers.IsUnknown() {
 		var headersModels []HeaderModel
-		if diags := request.Headers.ElementsAs(ctx, &headersModels, false); !diags.HasError() {
-			clientHeaders := make([]client.MonitorRequestHeader, len(headersModels))
-			for i, h := range headersModels {
-				clientHeaders[i] = client.MonitorRequestHeader{
-					Name:  h.Name.ValueString(),
-					Value: h.Value.ValueString(),
-				}
-			}
-			config.Headers = clientHeaders
+		if diags := request.Headers.ElementsAs(ctx, &headersModels, false); diags.HasError() {
+			return config, fmt.Errorf("could not read headers: %v", diags)
 		}
+
+		clientHeaders := make([]client.MonitorRequestHeader, len(headersModels))
+		for i, h := range headersModels {
+			clientHeaders[i] = client.MonitorRequestHeader{
+				Name:   h.Name.ValueString(),
+				Value:  h.Value.ValueStringPointer(),
+				Secret: h.Secret.ValueBoolPointer(),
+			}
+		}
+		config.Headers = clientHeaders
 	}
 
 	return config, nil
 }
 
-// Helper function to convert client request config to Terraform HTTP request model
-func clientConfigToHttpRequestModel(ctx context.Context, config client.MonitorRequestConfig) (*HttpRequestModel, error) {
+// Helper function to convert client request config to Terraform HTTP request model. The API
+// never returns the secrets, they are kept from prior: the plan on create and update, the
+// prior state on read, nil on import.
+func clientConfigToHttpRequestModel(ctx context.Context, config client.MonitorRequestConfig, prior *HttpRequestModel) (*HttpRequestModel, error) {
 	request := &HttpRequestModel{}
 
 	if config.Method != nil {
@@ -562,24 +676,53 @@ func clientConfigToHttpRequestModel(ctx context.Context, config client.MonitorRe
 		request.TlsSkipVerify = types.BoolNull()
 	}
 
-	if config.UserAgentSecret != nil {
+	// The user agent secret is kept from prior while the API reports that one is set, it is null
+	// when none is set, which detects a secret removed outside of Terraform
+	switch {
+	case config.UserAgentSecret != nil:
 		request.UserAgentSecret = types.StringValue(*config.UserAgentSecret)
-	} else {
+	case config.UserAgentSecretEnabled != nil && *config.UserAgentSecretEnabled && prior != nil && !prior.UserAgentSecret.IsUnknown():
+		request.UserAgentSecret = prior.UserAgentSecret
+	default:
 		request.UserAgentSecret = types.StringNull()
+	}
+
+	priorHeaders, diags := headersByName(ctx, prior)
+	if diags.HasError() {
+		return nil, fmt.Errorf("could not read prior headers: %v", diags)
 	}
 
 	// Convert headers
 	if len(config.Headers) > 0 {
 		headersList := make([]attr.Value, len(config.Headers))
 		for i, h := range config.Headers {
-			headerAttrs := map[string]attr.Value{
-				"name":  types.StringValue(h.Name),
-				"value": types.StringValue(h.Value),
+			secret := h.Secret != nil && *h.Secret
+			name := types.StringValue(h.Name)
+			value := types.StringPointerValue(h.Value)
+
+			if prior, ok := priorHeaders[strings.ToLower(h.Name)]; ok {
+				// The API normalizes the case of header names, keep the configured one
+				name = prior.Name
+				// The value of a secret header is never returned
+				if h.Value == nil && secret && !prior.Value.IsUnknown() {
+					value = prior.Value
+				}
 			}
-			headerObj, _ := types.ObjectValue(HeaderModelAttrTypes, headerAttrs)
+
+			headerObj, objDiags := types.ObjectValue(HeaderModelAttrTypes, map[string]attr.Value{
+				"name":   name,
+				"value":  value,
+				"secret": types.BoolValue(secret),
+			})
+			if objDiags.HasError() {
+				return nil, fmt.Errorf("could not convert header %q: %v", h.Name, objDiags)
+			}
 			headersList[i] = headerObj
 		}
-		headersListVal, _ := types.ListValue(types.ObjectType{AttrTypes: HeaderModelAttrTypes}, headersList)
+		headersListVal, listDiags := types.ListValue(types.ObjectType{AttrTypes: HeaderModelAttrTypes}, headersList)
+		if listDiags.HasError() {
+			return nil, fmt.Errorf("could not convert headers: %v", listDiags)
+		}
 		request.Headers = headersListVal
 	} else {
 		request.Headers = types.ListNull(types.ObjectType{AttrTypes: HeaderModelAttrTypes})
@@ -725,7 +868,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	// Convert request object
-	reqConfig, err := httpRequestModelToClientConfig(ctx, plan.Request)
+	reqConfig, err := httpRequestModelToClientConfig(ctx, plan.Request, nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Parsing Request Configuration",
@@ -842,7 +985,7 @@ func (r *uptimeMonitorHttpResource) Create(ctx context.Context, req resource.Cre
 	plan.ProjectId = types.Int64Value(apiResp.ProjectID)
 
 	// Convert request back to model
-	requestModel, err := clientConfigToHttpRequestModel(ctx, apiResp.Request)
+	requestModel, err := clientConfigToHttpRequestModel(ctx, apiResp.Request, plan.Request)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Converting Request",
@@ -930,7 +1073,7 @@ func (r *uptimeMonitorHttpResource) Read(ctx context.Context, req resource.ReadR
 	state.ProjectId = types.Int64Value(apiResp.ProjectID)
 
 	// Convert request
-	requestModel, err := clientConfigToHttpRequestModel(ctx, apiResp.Request)
+	requestModel, err := clientConfigToHttpRequestModel(ctx, apiResp.Request, state.Request)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Converting Request",
@@ -1017,7 +1160,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Convert request object
-	reqConfig, err := httpRequestModelToClientConfig(ctx, plan.Request)
+	reqConfig, err := httpRequestModelToClientConfig(ctx, plan.Request, state.Request)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Parsing Request Configuration",
@@ -1134,7 +1277,7 @@ func (r *uptimeMonitorHttpResource) Update(ctx context.Context, req resource.Upd
 	plan.ProjectId = types.Int64Value(apiResp.ProjectID)
 
 	// Convert request back to model
-	requestModel, err := clientConfigToHttpRequestModel(ctx, apiResp.Request)
+	requestModel, err := clientConfigToHttpRequestModel(ctx, apiResp.Request, plan.Request)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Converting Request",
