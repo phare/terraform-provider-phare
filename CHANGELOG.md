@@ -7,31 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-**Upgrade required:** the Phare API no longer returns the user agent secret and the values of secret headers of HTTP monitors, and now flags the existing headers whose name looks like a credential (`Authorization`, `X-Api-Key`, ...) as secret. With earlier versions of the provider, the monitors that have a user agent secret or a secret header show a diff on every plan, and every apply changing them fails with `Provider produced inconsistent result after apply`. This version requires the current Phare API, which accepts the `secret` flag of headers.
-
 ### Added
 
-- `secret` on the `headers` of the `phare_uptime_monitor_http` resource, to encrypt a header value and never return it from the API. When left out, a header keeps its current flag, `false` for a new header, so headers flagged as secret by Phare stay secret, only an explicit `secret = false` makes them public again.
-- Header names of the `phare_uptime_monitor_http` resource are validated to be unique, ignoring case, at plan time.
-- `request.user_agent_secret_enabled` and `secret` on the `request.headers` of the `phare_uptime_monitor` and `phare_uptime_monitors` data sources.
+- `secret` parameter on the `headers` of the `phare_uptime_monitor_http` resource, to encrypt a header value. When omitted, the header keeps its current flag, Phare flags existing credential headers like `Authorization` as secret.
+- `request.user_agent_secret_enabled` and `request.headers.secret` computed attributes on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources.
 
 ### Changed
 
-- The `user_agent_secret` and the secret header values of the `phare_uptime_monitor_http` resource are kept from the Terraform state, like the integration secrets: changes made outside of Terraform are not detected, except the removal of the user agent secret. An imported monitor has none in its state, so the first plan after the import shows them as changes.
-- **Breaking:** `user_agent_secret` of the `phare_uptime_monitor_http` resource is no longer computed: removing it from the configuration removes it from the monitor. A user agent secret set outside of Terraform and absent from the configuration is now shown as a removal in the plan, add it to the configuration to keep it.
-- **Breaking:** header values of the `phare_uptime_monitor_http` resource are sensitive and hidden in the plan output, as one header can't be hidden alone. Outputs referencing them need `sensitive = true`.
-- The ntfy `access_token` of the `phare_integration_ntfy` resource is set to null when the API reports that none is set, to detect a token removed outside of Terraform.
-- The `phare_integration_*` resources fail at plan time when creating, updating or deleting an integration with a project-scoped API key, which the API doesn't allow, instead of failing the apply with a permission error. Unchanged integrations still plan with a project-scoped API key.
+- `user_agent_secret` and secret header values of the `phare_uptime_monitor_http` resource are kept from the state, as the API no longer returns them. Imported monitors show them as changes on the first plan.
+- **Breaking:** `user_agent_secret` of the `phare_uptime_monitor_http` resource is no longer computed, a secret missing from the configuration is removed.
+- **Breaking:** header values of the `phare_uptime_monitor_http` resource are sensitive, outputs referencing them need `sensitive = true`.
+- Header names of the `phare_uptime_monitor_http` resource must be unique, ignoring case.
+- Creating, updating or deleting integrations with a project-scoped API key fails at plan time, the API requires an organization-scoped API key.
 
 ### Deprecated
 
-- `request.user_agent_secret` of the `phare_uptime_monitor` and `phare_uptime_monitors` data sources is always null, use `request.user_agent_secret_enabled` instead.
+- `request.user_agent_secret` on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources, always null, use `request.user_agent_secret_enabled` instead.
 
 ### Fixed
 
-- Header names of the `phare_uptime_monitor_http` resource keep their configured case, the API normalizes it (`x-api-key` to `X-Api-Key`), which failed the apply with an inconsistent result.
-- Debug logs redact the values of secret headers, and no longer replace the `secret` flag of headers.
-- The `role` of the `phare_user` and `phare_users` data sources lists the `viewer` and `responder` roles in its description.
+- HTTP monitors with a user agent secret or secret headers showed a diff on every plan and failed to apply, as the API no longer returns them. Earlier versions of the provider must be upgraded.
+- Lowercase header names, such as `x-api-key`, failed the apply with an inconsistent result.
+- An ntfy `access_token` removed outside of Terraform was not detected.
+- The `role` description of the `phare_user` and `phare_users` data sources missed the `viewer` and `responder` roles.
+
+### Security
+
+- Secret header values are redacted from debug logs.
 
 ## [1.1.1] - 2026-10-25
 
