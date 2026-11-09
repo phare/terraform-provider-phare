@@ -11,7 +11,7 @@
 
 <br />
 
-<p align="center"><img src="https://github.com/user-attachments/assets/271fbed1-32d8-4826-a8eb-41e700e1a33e" width="700" alt="Terraform provider Phare"></p>
+<p align="center"><img src="https://github.com/user-attachments/assets/04c4171b-2871-4a6f-92b9-2406da89c935" width="700" alt="Terraform provider Phare"></p>
 
 <br />
 <br />
