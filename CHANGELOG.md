@@ -30,6 +30,7 @@ The Phare API no longer returns the user agent secret and the values of secret h
 
 - Header names of the `phare_uptime_monitor_http` resource keep their configured case, the API normalizes it (`x-api-key` to `X-Api-Key`), which failed the apply with an inconsistent result.
 - Debug logs redact the values of secret headers, and no longer replace the `secret` flag of headers.
+- The `role` of the `phare_user` and `phare_users` data sources lists the `viewer` and `responder` roles in its description.
 
 ## [1.1.1] - 2026-10-25
 

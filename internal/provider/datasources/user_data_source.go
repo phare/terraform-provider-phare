@@ -45,7 +45,7 @@ func userSchemaAttributes() map[string]schema.Attribute {
 		},
 		"role": schema.StringAttribute{
 			Computed:    true,
-			Description: "User role (member or admin)",
+			Description: "User role (viewer, responder, member or admin)",
 		},
 		"email": schema.StringAttribute{
 			Computed:    true,
