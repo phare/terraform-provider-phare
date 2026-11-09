@@ -29,5 +29,5 @@ data "phare_user" "admin" {
 
 - `created_at` (String) Creation timestamp
 - `email` (String) User email address
-- `role` (String) User role (member or admin)
+- `role` (String) User role (viewer, responder, member or admin)
 - `updated_at` (String) Last update timestamp

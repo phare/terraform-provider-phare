@@ -100,7 +100,11 @@ var (
 	_ resource.Resource                = &integrationResource{}
 	_ resource.ResourceWithConfigure   = &integrationResource{}
 	_ resource.ResourceWithImportState = &integrationResource{}
+	_ resource.ResourceWithModifyPlan  = &integrationResource{}
 )
+
+// integrationOrgKeyNote is appended to the description of every integration resource
+const integrationOrgKeyNote = " Creating, updating and deleting integrations requires an organization-scoped API key (starting with pha_org_)."
 
 // integrationResource is the resource implementation shared by all integration apps,
 // each app provides its settings schema and model
@@ -131,13 +135,32 @@ func (r *integrationResource) Schema(ctx context.Context, req resource.SchemaReq
 		Attributes:          r.settingsAttributes(),
 	}
 
-	description := r.description + " Integrations belong to the organization and are used by alert rules to send notifications."
+	description := r.description + " Integrations belong to the organization and are used by alert rules to send notifications." + integrationOrgKeyNote
 
 	resp.Schema = schema.Schema{
 		Description:         description,
 		MarkdownDescription: description + " [See docs](https://docs.phare.io/integrations/" + r.docsPage + ").",
 		Attributes:          attributes,
 	}
+}
+
+// ModifyPlan fails the plan of a change made with a project-scoped API key, as the API only
+// allows organization-scoped API keys to write integrations. Reading them is allowed, so an
+// unchanged integration plans without error.
+func (r *integrationResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	apiClient := r.GetClient()
+	if apiClient == nil || !apiClient.IsProjectScoped() {
+		return
+	}
+
+	if !req.State.Raw.IsNull() && !req.Plan.Raw.IsNull() && req.Plan.Raw.Equal(req.State.Raw) {
+		return
+	}
+
+	resp.Diagnostics.AddError(
+		"Organization-Scoped API Key Required",
+		fmt.Sprintf("The provider is configured with a project-scoped API key, creating, updating and deleting the %s integration requires an organization-scoped API key (starting with pha_org_).", r.displayName),
+	)
 }
 
 // mapAPIResponseToModel maps API response data to the resource model

@@ -85,3 +85,103 @@ func TestMonitorRequest_MarshalsDisplayName(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(body), `"display_name":"Website"`)
 }
+
+func TestMonitorRequestConfig_MarshalsUserAgentSecret(t *testing.T) {
+	secret := "definitely-not-a-bot"
+
+	testCases := []struct {
+		name     string
+		config   MonitorRequestConfig
+		expected string
+	}{
+		{
+			name:     "omitted keeps the current secret",
+			config:   MonitorRequestConfig{},
+			expected: `{}`,
+		},
+		{
+			name:     "null removes the secret",
+			config:   MonitorRequestConfig{RemoveUserAgentSecret: true},
+			expected: `{"user_agent_secret":null}`,
+		},
+		{
+			name:     "value replaces the secret",
+			config:   MonitorRequestConfig{UserAgentSecret: &secret, RemoveUserAgentSecret: true},
+			expected: `{"user_agent_secret":"definitely-not-a-bot"}`,
+		},
+		{
+			name:     "read only flag is never sent",
+			config:   MonitorRequestConfig{UserAgentSecretEnabled: new(true)},
+			expected: `{}`,
+		},
+		{
+			name:     "read only flag is never sent with a null secret",
+			config:   MonitorRequestConfig{UserAgentSecretEnabled: new(true), RemoveUserAgentSecret: true},
+			expected: `{"user_agent_secret":null}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			body, err := json.Marshal(tc.config)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.expected, string(body))
+		})
+	}
+
+	t.Run("nested in a monitor request", func(t *testing.T) {
+		body, err := json.Marshal(&MonitorRequest{Name: "mon", Request: MonitorRequestConfig{RemoveUserAgentSecret: true}})
+		require.NoError(t, err)
+		require.Contains(t, string(body), `"request":{"user_agent_secret":null}`)
+	})
+}
+
+func TestMonitorRequestHeader_Marshals(t *testing.T) {
+	value := "Bearer token"
+
+	testCases := []struct {
+		name     string
+		header   MonitorRequestHeader
+		expected string
+	}{
+		{
+			name:     "secret header",
+			header:   MonitorRequestHeader{Name: "Authorization", Value: &value, Secret: new(true)},
+			expected: `{"name":"Authorization","value":"Bearer token","secret":true}`,
+		},
+		{
+			name:     "explicit public header",
+			header:   MonitorRequestHeader{Name: "Authorization", Value: &value, Secret: new(false)},
+			expected: `{"name":"Authorization","value":"Bearer token","secret":false}`,
+		},
+		{
+			name:     "flag omitted keeps the current one",
+			header:   MonitorRequestHeader{Name: "Authorization", Value: &value},
+			expected: `{"name":"Authorization","value":"Bearer token"}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			body, err := json.Marshal(tc.header)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.expected, string(body))
+		})
+	}
+}
+
+func TestMonitorResponse_DecodesSecrets(t *testing.T) {
+	var monitor MonitorResponse
+	require.NoError(t, json.Unmarshal([]byte(`{"id":1,"request":{"method":"GET","user_agent_secret_enabled":true,"headers":[{"name":"Authorization","secret":true},{"name":"X-Public","value":"hello","secret":false}]}}`), &monitor))
+
+	require.Nil(t, monitor.Request.UserAgentSecret)
+	require.NotNil(t, monitor.Request.UserAgentSecretEnabled)
+	require.True(t, *monitor.Request.UserAgentSecretEnabled)
+
+	require.Len(t, monitor.Request.Headers, 2)
+	require.Equal(t, "Authorization", monitor.Request.Headers[0].Name)
+	require.Nil(t, monitor.Request.Headers[0].Value)
+	require.True(t, *monitor.Request.Headers[0].Secret)
+	require.Equal(t, "hello", *monitor.Request.Headers[1].Value)
+	require.False(t, *monitor.Request.Headers[1].Secret)
+}

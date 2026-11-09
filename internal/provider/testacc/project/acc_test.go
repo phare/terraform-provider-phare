@@ -17,28 +17,15 @@ func TestAccAlertRuleDataSource(t *testing.T) {
 	testacc.RunAlertRuleDataSource(t, testacc.ProjectScope)
 }
 
-func TestAccIntegrationEmailResource(t *testing.T) {
-	testacc.RunIntegrationEmailResource(t, testacc.ProjectScope)
-}
-
-func TestAccIntegrationIlertResource(t *testing.T) {
-	testacc.RunIntegrationIlertResource(t, testacc.ProjectScope)
-}
-
-func TestAccIntegrationNtfyResource(t *testing.T) {
-	testacc.RunIntegrationNtfyResource(t, testacc.ProjectScope)
-}
-
-func TestAccIntegrationOutgoingWebhookResource(t *testing.T) {
-	testacc.RunIntegrationOutgoingWebhookResource(t, testacc.ProjectScope)
-}
-
-func TestAccIntegrationPushoverResource(t *testing.T) {
-	testacc.RunIntegrationPushoverResource(t, testacc.ProjectScope)
-}
+// The integration resources only run with an organization-scoped API key, the
+// API doesn't allow project-scoped API keys to write integrations
 
 func TestAccUptimeMonitorHttpResource(t *testing.T) {
 	testacc.RunUptimeMonitorHttpResource(t, testacc.ProjectScope)
+}
+
+func TestAccUptimeMonitorHttpResourceSecrets(t *testing.T) {
+	testacc.RunUptimeMonitorHttpResourceSecrets(t, testacc.ProjectScope)
 }
 
 func TestAccUptimeMonitorIcmpResource(t *testing.T) {

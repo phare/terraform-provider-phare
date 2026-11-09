@@ -52,11 +52,23 @@ func redactValue(value any) bool {
 
 	switch v := value.(type) {
 	case map[string]any:
-		for key, item := range v {
-			if _, ok := sensitiveBodyKeys[key]; ok && item != nil {
-				v[key] = redactedValue
+		// The value of a secret http monitor header, flagged by "secret": true,
+		// "value" can't be a sensitive key as assertions use it too
+		if secret, ok := v["secret"].(bool); ok && secret {
+			if item, ok := v["value"]; ok && item != nil {
+				v["value"] = redactedValue
 				redacted = true
-				continue
+			}
+		}
+
+		for key, item := range v {
+			// Booleans are flags, such as the secret flag of http monitor headers, not secrets
+			if _, ok := sensitiveBodyKeys[key]; ok && item != nil {
+				if _, isFlag := item.(bool); !isFlag {
+					v[key] = redactedValue
+					redacted = true
+					continue
+				}
 			}
 			redacted = redactValue(item) || redacted
 		}

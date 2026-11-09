@@ -7,11 +7,17 @@ resource "phare_uptime_monitor_http" "website" {
     url               = "https://docs.phare.io/introduction"
     tls_skip_verify   = false
     follow_redirects  = true
-    user_agent_secret = "definitely-not-a-bot"
+    user_agent_secret = "definitely-not-a-bot" # Never returned by the API
 
     headers {
       name  = "X-Phare-Says"
       value = "Hello world!"
+    }
+
+    headers {
+      name   = "Authorization"
+      value  = "Bearer my-api-token"
+      secret = true # Encrypted by Phare, its value is never returned by the API
     }
   }
 

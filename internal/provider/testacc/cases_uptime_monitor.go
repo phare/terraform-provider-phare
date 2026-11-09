@@ -98,6 +98,110 @@ resource "phare_uptime_monitor_http" "test" {
 	)
 }
 
+// httpMonitorSecretsConfig returns an HTTP monitor with the given request attributes and headers
+func httpMonitorSecretsConfig(s Scope, name, requestAttrs, headers string) string {
+	return `
+resource "phare_uptime_monitor_http" "test" {
+	` + s.Attr() + `
+	name     = "` + name + `"
+	interval = 60
+	timeout  = 15000
+	regions  = ["eu-fra-cdg"]
+
+	incident_confirmations = 1
+	recovery_confirmations = 1
+	region_threshold       = 1
+
+	request {
+		method = "GET"
+		url    = "https://invariance.dev"
+		` + requestAttrs + `
+		` + headers + `
+	}
+
+	success_assertions {
+		status_code {
+			operator = "in"
+			value    = "2xx"
+		}
+	}
+}
+`
+}
+
+// RunUptimeMonitorHttpResourceSecrets verifies that the user agent secret and the secret headers,
+// which the API never returns, plan clean after apply and refresh, and can be updated and removed
+func RunUptimeMonitorHttpResourceSecrets(t *testing.T, s Scope) {
+	name := RandomName("http-secrets")
+	resourceName := "phare_uptime_monitor_http.test"
+
+	s.Test(t,
+		// Every step fails on a non-empty plan after apply and after refresh
+		testingresource.TestStep{
+			Config: httpMonitorSecretsConfig(s, name, `user_agent_secret = "definitely-not-a-bot"`, `
+		headers {
+			name   = "Authorization"
+			value  = "Bearer first-token"
+			secret = true
+		}
+
+		headers {
+			name  = "X-Phare-Says"
+			value = "Hello world!"
+		}`),
+			Check: testingresource.ComposeAggregateTestCheckFunc(
+				testingresource.TestCheckResourceAttr(resourceName, "request.user_agent_secret", "definitely-not-a-bot"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.0.name", "Authorization"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.0.value", "Bearer first-token"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.0.secret", "true"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.1.value", "Hello world!"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.1.secret", "false"),
+			),
+		},
+		// Reordered, the flag left out keeps the header secret, and a new value for the secret
+		testingresource.TestStep{
+			Config: httpMonitorSecretsConfig(s, name, `user_agent_secret = "still-not-a-bot"`, `
+		headers {
+			name  = "X-Phare-Says"
+			value = "Hello world!"
+		}
+
+		headers {
+			name  = "authorization"
+			value = "Bearer second-token"
+		}`),
+			Check: testingresource.ComposeAggregateTestCheckFunc(
+				testingresource.TestCheckResourceAttr(resourceName, "request.user_agent_secret", "still-not-a-bot"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.0.secret", "false"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.1.name", "authorization"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.1.value", "Bearer second-token"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.1.secret", "true"),
+			),
+		},
+		// The API never returns the secrets, they are null in the imported state
+		s.ImportStep(resourceName, "status", "updated_at", "request.user_agent_secret", "request.headers.1.value", "request.headers.1.name"),
+		// The user agent secret removed from the configuration is removed, and the header made public again
+		testingresource.TestStep{
+			Config: httpMonitorSecretsConfig(s, name, "", `
+		headers {
+			name  = "X-Phare-Says"
+			value = "Hello world!"
+		}
+
+		headers {
+			name   = "Authorization"
+			value  = "Bearer second-token"
+			secret = false
+		}`),
+			Check: testingresource.ComposeAggregateTestCheckFunc(
+				testingresource.TestCheckNoResourceAttr(resourceName, "request.user_agent_secret"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.1.value", "Bearer second-token"),
+				testingresource.TestCheckResourceAttr(resourceName, "request.headers.1.secret", "false"),
+			),
+		},
+	)
+}
+
 // RunUptimeMonitorIcmpResource creates a basic ICMP uptime monitor and verifies CRUD operations
 func RunUptimeMonitorIcmpResource(t *testing.T, s Scope) {
 	name := RandomName("icmp")

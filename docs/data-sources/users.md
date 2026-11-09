@@ -39,5 +39,5 @@ Read-Only:
 - `created_at` (String) Creation timestamp
 - `email` (String) User email address
 - `id` (Number) User ID
-- `role` (String) User role (member or admin)
+- `role` (String) User role (viewer, responder, member or admin)
 - `updated_at` (String) Last update timestamp

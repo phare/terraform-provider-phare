@@ -50,6 +50,16 @@ func TestRedactBody(t *testing.T) {
 			body:     `{"access_token_enabled":true,"access_password_enabled":false}`,
 			expected: `{"access_token_enabled":true,"access_password_enabled":false}`,
 		},
+		{
+			name:     "secret header values",
+			body:     `{"request":{"headers":[{"name":"Authorization","value":"` + testSecret + `","secret":true},{"name":"X-Public","value":"hello","secret":false},{"name":"X-Kept","value":"hello"}]}}`,
+			expected: `{"request":{"headers":[{"name":"Authorization","value":"***","secret":true},{"name":"X-Public","value":"hello","secret":false},{"name":"X-Kept","value":"hello"}]}}`,
+		},
+		{
+			name:     "secret header without value",
+			body:     `{"request":{"user_agent_secret_enabled":true,"headers":[{"name":"Authorization","secret":true}]},"success_assertions":[{"type":"response_body","value":"ok"}],"secret":"` + testSecret + `"}`,
+			expected: `{"request":{"user_agent_secret_enabled":true,"headers":[{"name":"Authorization","secret":true}]},"success_assertions":[{"type":"response_body","value":"ok"}],"secret":"***"}`,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -82,6 +92,7 @@ func TestRedactBody_SensitiveRequestFields(t *testing.T) {
 		"outgoing webhook integration": &IntegrationRequest{Name: "Ops", Settings: OutgoingWebhookIntegrationSettings{URL: "https://example.com", Secret: secret}},
 		"pushover integration":         &IntegrationRequest{Name: "Ops", Settings: PushoverIntegrationSettings{UserKey: secret, APIKey: secret}},
 		"http monitor":                 &MonitorRequest{Name: "Monitor", Request: MonitorRequestConfig{UserAgentSecret: &secret}},
+		"http monitor secret header":   &MonitorRequest{Name: "Monitor", Request: MonitorRequestConfig{Headers: []MonitorRequestHeader{{Name: "Authorization", Value: &secret, Secret: new(true)}}}},
 		"status page":                  &StatusPageRequest{Name: "Status", AccessToken: &secret, AccessPassword: &secret},
 	}
 

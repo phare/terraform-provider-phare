@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `secret` parameter on the `headers` of the `phare_uptime_monitor_http` resource, to encrypt the header value.
+- `user_agent_secret_enabled` and `headers.secret` computed attributes on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources.
+
+### Changed
+
+- **Breaking:** the Phare API no longer returns `user_agent_secret` and secret header values, they are now kept from the state. Earlier versions show a diff on every plan and must be upgraded.
+- **Breaking:** header values of the `phare_uptime_monitor_http` resource are sensitive.
+
+### Deprecated
+
+- `user_agent_secret` on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources, always null.
+
 ## [1.1.1] - 2026-10-25
 
 ### Security

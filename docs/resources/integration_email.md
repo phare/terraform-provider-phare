@@ -3,12 +3,12 @@
 page_title: "phare_integration_email Resource - phare"
 subcategory: ""
 description: |-
-  Manages an email integration in Phare, sending alerts by email to organization members. Integrations belong to the organization and are used by alert rules to send notifications. See docs https://docs.phare.io/integrations/email.
+  Manages an email integration in Phare, sending alerts by email to organization members. Integrations belong to the organization and are used by alert rules to send notifications. Creating, updating and deleting integrations requires an organization-scoped API key (starting with pha_org_). See docs https://docs.phare.io/integrations/email.
 ---
 
 # phare_integration_email (Resource)
 
-Manages an email integration in Phare, sending alerts by email to organization members. Integrations belong to the organization and are used by alert rules to send notifications. [See docs](https://docs.phare.io/integrations/email).
+Manages an email integration in Phare, sending alerts by email to organization members. Integrations belong to the organization and are used by alert rules to send notifications. Creating, updating and deleting integrations requires an organization-scoped API key (starting with pha_org_). [See docs](https://docs.phare.io/integrations/email).
 
 ## Example Usage
 
