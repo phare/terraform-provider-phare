@@ -9,31 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `secret` parameter on the `headers` of the `phare_uptime_monitor_http` resource, to encrypt a header value. When omitted, the header keeps its current flag, Phare flags existing credential headers like `Authorization` as secret.
-- `request.user_agent_secret_enabled` and `request.headers.secret` computed attributes on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources.
+- `secret` parameter on the `headers` of the `phare_uptime_monitor_http` resource, to encrypt the header value.
+- `user_agent_secret_enabled` and `headers.secret` computed attributes on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources.
 
 ### Changed
 
-- `user_agent_secret` and secret header values of the `phare_uptime_monitor_http` resource are kept from the state, as the API no longer returns them. Imported monitors show them as changes on the first plan.
-- **Breaking:** `user_agent_secret` of the `phare_uptime_monitor_http` resource is no longer computed, a secret missing from the configuration is removed.
-- **Breaking:** header values of the `phare_uptime_monitor_http` resource are sensitive, outputs referencing them need `sensitive = true`.
-- Header names of the `phare_uptime_monitor_http` resource must be unique, ignoring case.
-- Creating, updating or deleting integrations with a project-scoped API key fails at plan time, the API requires an organization-scoped API key.
+- **Breaking:** the Phare API no longer returns `user_agent_secret` and secret header values, they are now kept from the state. Earlier versions show a diff on every plan and must be upgraded.
+- **Breaking:** header values of the `phare_uptime_monitor_http` resource are sensitive.
 
 ### Deprecated
 
-- `request.user_agent_secret` on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources, always null, use `request.user_agent_secret_enabled` instead.
-
-### Fixed
-
-- HTTP monitors with a user agent secret or secret headers showed a diff on every plan and failed to apply, as the API no longer returns them. Earlier versions of the provider must be upgraded.
-- Lowercase header names, such as `x-api-key`, failed the apply with an inconsistent result.
-- An ntfy `access_token` removed outside of Terraform was not detected.
-- The `role` description of the `phare_user` and `phare_users` data sources missed the `viewer` and `responder` roles.
-
-### Security
-
-- Secret header values are redacted from debug logs.
+- `user_agent_secret` on the `phare_uptime_monitor` and `phare_uptime_monitors` data sources, always null.
 
 ## [1.1.1] - 2026-10-25
 
