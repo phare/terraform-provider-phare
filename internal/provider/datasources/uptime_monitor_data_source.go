@@ -302,7 +302,6 @@ func monitorSchemaAttributes() map[string]schema.Attribute {
 				},
 				"user_agent_secret": schema.StringAttribute{
 					Computed:           true,
-					Sensitive:          true,
 					Description:        "Always null, the API never returns the user agent secret. Use user_agent_secret_enabled instead.",
 					DeprecationMessage: "The API never returns the user agent secret anymore, this attribute is always null and will be removed in a future version. Use user_agent_secret_enabled instead.",
 				},

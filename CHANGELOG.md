@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-The Phare API no longer returns the user agent secret and the values of secret headers of HTTP monitors. Upgrade to this version to avoid a diff on every plan for the monitors that have a user agent secret or a secret header, which includes the existing headers whose name looks like a credential (`Authorization`, `X-Api-Key`, ...) that Phare now flags as secret.
+**Upgrade required:** the Phare API no longer returns the user agent secret and the values of secret headers of HTTP monitors, and now flags the existing headers whose name looks like a credential (`Authorization`, `X-Api-Key`, ...) as secret. With earlier versions of the provider, the monitors that have a user agent secret or a secret header show a diff on every plan, and every apply changing them fails with `Provider produced inconsistent result after apply`. This version requires the current Phare API, which accepts the `secret` flag of headers.
 
 ### Added
 
@@ -18,8 +18,8 @@ The Phare API no longer returns the user agent secret and the values of secret h
 ### Changed
 
 - The `user_agent_secret` and the secret header values of the `phare_uptime_monitor_http` resource are kept from the Terraform state, like the integration secrets: changes made outside of Terraform are not detected, except the removal of the user agent secret. An imported monitor has none in its state, so the first plan after the import shows them as changes.
-- `user_agent_secret` of the `phare_uptime_monitor_http` resource is no longer computed: removing it from the configuration removes it from the monitor. A user agent secret set outside of Terraform and absent from the configuration is now shown as a removal in the plan.
-- Header values of the `phare_uptime_monitor_http` resource are sensitive and hidden in the plan output, as one header can't be hidden alone.
+- **Breaking:** `user_agent_secret` of the `phare_uptime_monitor_http` resource is no longer computed: removing it from the configuration removes it from the monitor. A user agent secret set outside of Terraform and absent from the configuration is now shown as a removal in the plan, add it to the configuration to keep it.
+- **Breaking:** header values of the `phare_uptime_monitor_http` resource are sensitive and hidden in the plan output, as one header can't be hidden alone. Outputs referencing them need `sensitive = true`.
 - The ntfy `access_token` of the `phare_integration_ntfy` resource is set to null when the API reports that none is set, to detect a token removed outside of Terraform.
 
 ### Deprecated

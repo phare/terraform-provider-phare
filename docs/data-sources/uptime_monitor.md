@@ -66,7 +66,7 @@ Read-Only:
 - `port` (Number) Port to connect to (for TCP monitors)
 - `tls_skip_verify` (Boolean) Whether to skip TLS certificate verification
 - `url` (String) URL being monitored (for HTTP/HTTPS monitors)
-- `user_agent_secret` (String, Sensitive, Deprecated) Always null, the API never returns the user agent secret. Use user_agent_secret_enabled instead.
+- `user_agent_secret` (String, Deprecated) Always null, the API never returns the user agent secret. Use user_agent_secret_enabled instead.
 - `user_agent_secret_enabled` (Boolean) Whether a user agent secret is set (for HTTP monitors)
 
 <a id="nestedatt--request--headers"></a>
