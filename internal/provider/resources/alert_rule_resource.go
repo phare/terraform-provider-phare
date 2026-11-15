@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"terraform-provider-phare/internal/client"
 	"terraform-provider-phare/internal/provider/helpers"
@@ -205,6 +206,13 @@ func (r *alertRuleResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 				"Invalid event_settings JSON",
 				"event_settings must be a valid JSON string",
 			)
+		} else if eventSettingsType(plan.EventSettings.ValueString()) == legacyIncidentType {
+			resp.Diagnostics.AddAttributeWarning(
+				path.Root("event_settings"),
+				"Deprecated incident type",
+				`The "monitor" incident type was renamed to "automatic", as incidents are also created by heartbeats. `+
+					`Phare still accepts "monitor", replace it with "automatic" in event_settings.`,
+			)
 		}
 	}
 
@@ -218,6 +226,44 @@ func (r *alertRuleResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 			)
 		}
 	}
+}
+
+// legacyIncidentType is the uptime incident type the API renamed to
+// automaticIncidentType, it still accepts it but returns the new name.
+const (
+	legacyIncidentType    = "monitor"
+	automaticIncidentType = "automatic"
+)
+
+// eventSettingsType returns the type of event settings, empty when they are not
+// a JSON object with a string type.
+func eventSettingsType(eventSettings string) string {
+	var settings struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal([]byte(eventSettings), &settings); err != nil {
+		return ""
+	}
+	return settings.Type
+}
+
+// isLegacyEventSettingsOf reports whether the configured event settings use the
+// legacy incident type and only differ from the returned ones by its new name.
+func isLegacyEventSettingsOf(configured string, returned json.RawMessage) bool {
+	var configuredSettings, returnedSettings map[string]any
+	if err := json.Unmarshal([]byte(configured), &configuredSettings); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(returned, &returnedSettings); err != nil {
+		return false
+	}
+
+	if configuredSettings["type"] != legacyIncidentType {
+		return false
+	}
+	configuredSettings["type"] = automaticIncidentType
+
+	return reflect.DeepEqual(configuredSettings, returnedSettings)
 }
 
 // mapAPIResponseToModel maps API response data to the resource model
@@ -234,9 +280,13 @@ func (r *alertRuleResource) mapAPIResponseToModel(apiResp *client.AlertRuleRespo
 		model.ProjectId = types.Int64Null()
 	}
 
-	// Handle optional event_settings
+	// Handle optional event_settings, keeping a configured legacy incident type
+	// the API returns renamed, so that it doesn't show a diff
 	if len(apiResp.EventSettings) > 0 {
-		model.EventSettings = types.StringValue(string(apiResp.EventSettings))
+		if model.EventSettings.IsNull() || model.EventSettings.IsUnknown() ||
+			!isLegacyEventSettingsOf(model.EventSettings.ValueString(), apiResp.EventSettings) {
+			model.EventSettings = types.StringValue(string(apiResp.EventSettings))
+		}
 	} else {
 		model.EventSettings = types.StringNull()
 	}
