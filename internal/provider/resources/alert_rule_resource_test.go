@@ -318,6 +318,75 @@ func TestAlertRuleResource_ModifyPlan(t *testing.T) {
 	}
 }
 
+func TestAlertRuleResource_LegacyIncidentType(t *testing.T) {
+	r := &alertRuleResource{}
+
+	t.Run("keeps the configured legacy type the API returns renamed", func(t *testing.T) {
+		model := alertRuleModel{UptimeAlertRuleModel: UptimeAlertRuleModel{
+			EventSettings: types.StringValue(`{"type":"monitor"}`),
+		}}
+		r.mapAPIResponseToModel(&client.AlertRuleResponse{EventSettings: []byte(`{"type":"automatic"}`)}, &model)
+		require.Equal(t, `{"type":"monitor"}`, model.EventSettings.ValueString())
+	})
+
+	t.Run("uses the returned settings when they differ by more than the type", func(t *testing.T) {
+		model := alertRuleModel{UptimeAlertRuleModel: UptimeAlertRuleModel{
+			EventSettings: types.StringValue(`{"type":"monitor","other":true}`),
+		}}
+		r.mapAPIResponseToModel(&client.AlertRuleResponse{EventSettings: []byte(`{"type":"automatic"}`)}, &model)
+		require.Equal(t, `{"type":"automatic"}`, model.EventSettings.ValueString())
+	})
+
+	t.Run("uses the returned settings on import", func(t *testing.T) {
+		model := alertRuleModel{UptimeAlertRuleModel: UptimeAlertRuleModel{
+			EventSettings: types.StringNull(),
+		}}
+		r.mapAPIResponseToModel(&client.AlertRuleResponse{EventSettings: []byte(`{"type":"automatic"}`)}, &model)
+		require.Equal(t, `{"type":"automatic"}`, model.EventSettings.ValueString())
+	})
+
+	t.Run("uses the returned manual type", func(t *testing.T) {
+		model := alertRuleModel{UptimeAlertRuleModel: UptimeAlertRuleModel{
+			EventSettings: types.StringValue(`{"type":"monitor"}`),
+		}}
+		r.mapAPIResponseToModel(&client.AlertRuleResponse{EventSettings: []byte(`{"type":"manual"}`)}, &model)
+		require.Equal(t, `{"type":"manual"}`, model.EventSettings.ValueString())
+	})
+
+	t.Run("warns about the legacy type at plan time", func(t *testing.T) {
+		realClient, err := client.NewClient("https://api.phare.io", "token", 10*time.Second, "123", "", "1.0", "1.0", true)
+		require.NoError(t, err)
+		r.Configure(context.Background(), resource.ConfigureRequest{ProviderData: realClient}, &resource.ConfigureResponse{})
+
+		schemaResp := &resource.SchemaResponse{}
+		r.Schema(context.Background(), resource.SchemaRequest{}, schemaResp)
+
+		for eventSettings, expectWarning := range map[string]bool{
+			`{"type":"monitor"}`:   true,
+			`{"type":"automatic"}`: false,
+			`{"type":"all"}`:       false,
+		} {
+			plan := tfsdk.Plan{Schema: schemaResp.Schema}
+			diags := plan.Set(context.Background(), alertRuleModel{
+				UptimeAlertRuleModel: UptimeAlertRuleModel{
+					Event:         types.StringValue("uptime.incident.created"),
+					EventSettings: types.StringValue(eventSettings),
+					IntegrationId: types.Int64Value(1),
+					RateLimit:     types.Int64Value(0),
+				},
+				ProjectScope: types.DynamicNull(),
+				Scope:        types.StringValue("project"),
+			})
+			require.False(t, diags.HasError())
+
+			resp := &resource.ModifyPlanResponse{}
+			r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{Plan: plan}, resp)
+			require.False(t, resp.Diagnostics.HasError(), eventSettings)
+			require.Equal(t, expectWarning, resp.Diagnostics.WarningsCount() == 1, eventSettings)
+		}
+	})
+}
+
 func TestAlertRuleResource_ImportState(t *testing.T) {
 	ctx := context.Background()
 	schemaResp := &resource.SchemaResponse{}
