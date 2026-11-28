@@ -21,6 +21,10 @@ data "phare_uptime_monitor" "api" {
   id = 124
 }
 
+data "phare_uptime_heartbeat" "backup" {
+  id = 125
+}
+
 resource "phare_uptime_status_page" "main" {
   name                  = "Status page"
   title                 = "Example status page"
@@ -83,6 +87,10 @@ resource "phare_uptime_status_page" "main" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = data.phare_uptime_monitor.api.id
+        },
+        {
+          componentable_type = "uptime/heartbeat"
+          componentable_id   = data.phare_uptime_heartbeat.backup.id
         }
       ]
     }
@@ -101,7 +109,7 @@ resource "phare_uptime_status_page" "main" {
 
 ### Required
 
-- `components` (Attributes List) List of components to show on the status page (see [below for nested schema](#nestedatt--components))
+- `components` (Attributes List) List of components to show on the status page, a monitor or a heartbeat can only be shown once on a status page (see [below for nested schema](#nestedatt--components))
 - `description` (String) Status page description
 - `name` (String) Status page name
 - `search_engine_indexed` (Boolean) Whether search engines can index the page
@@ -141,11 +149,11 @@ resource "phare_uptime_status_page" "main" {
 
 Required:
 
-- `componentable_type` (String) Type of component entity (uptime/monitor or uptime/group)
+- `componentable_type` (String) Type of component entity (uptime/monitor, uptime/heartbeat or uptime/group)
 
 Optional:
 
-- `componentable_id` (Number) ID of the component entity to display on the status page (required for uptime/monitor)
+- `componentable_id` (Number) ID of the monitor or heartbeat to display on the status page (required for uptime/monitor and uptime/heartbeat)
 - `components` (Attributes List) List of components shown inside the group (required for uptime/group) (see [below for nested schema](#nestedatt--components--components))
 - `is_expanded` (Boolean) Whether the group components are expanded by default (for uptime/group)
 - `name` (String) Name of the component group (required for uptime/group)
@@ -155,8 +163,8 @@ Optional:
 
 Required:
 
-- `componentable_id` (Number) ID of the component entity to display inside the component group
-- `componentable_type` (String) Type of component entity (uptime/monitor)
+- `componentable_id` (Number) ID of the monitor or heartbeat to display inside the component group
+- `componentable_type` (String) Type of component entity (uptime/monitor or uptime/heartbeat)
 
 
 

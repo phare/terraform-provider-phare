@@ -66,7 +66,7 @@ func SweepProjects(ctx context.Context, c *client.Client) error {
 // SweepProjectResources deletes the resources leaked by previous
 // project-scoped test runs in the project of the client's API key
 func SweepProjectResources(ctx context.Context, c *client.Client) error {
-	// Status pages first, as they reference monitors
+	// Status pages first, as they reference monitors and heartbeats
 	statusPages, err := listAll(func(page int) ([]*client.StatusPageResponse, error) {
 		return c.ListStatusPages(ctx, page, sweepPageSize, nil)
 	})
@@ -82,6 +82,24 @@ func SweepProjectResources(ctx context.Context, c *client.Client) error {
 		log.Printf("[INFO] Sweeping leaked status page %q (%d)", statusPage.Name, statusPage.ID)
 		if err := c.DeleteStatusPage(ctx, statusPage.ID); err != nil && !client.IsNotFoundError(err) {
 			return fmt.Errorf("deleting status page %d: %w", statusPage.ID, err)
+		}
+	}
+
+	heartbeats, err := listAll(func(page int) ([]*client.HeartbeatResponse, error) {
+		return c.ListHeartbeats(ctx, page, sweepPageSize, nil)
+	})
+	if err != nil {
+		return fmt.Errorf("listing heartbeats: %w", err)
+	}
+
+	for _, heartbeat := range heartbeats {
+		if !isLeaked(heartbeat.Name, heartbeat.CreatedAt) {
+			continue
+		}
+
+		log.Printf("[INFO] Sweeping leaked heartbeat %q (%d)", heartbeat.Name, heartbeat.ID)
+		if err := c.DeleteHeartbeat(ctx, heartbeat.ID); err != nil && !client.IsNotFoundError(err) {
+			return fmt.Errorf("deleting heartbeat %d: %w", heartbeat.ID, err)
 		}
 	}
 

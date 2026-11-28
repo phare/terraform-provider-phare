@@ -463,11 +463,11 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 				Attributes: map[string]schema.Attribute{
 					"componentable_type": schema.StringAttribute{
 						Computed:    true,
-						Description: "Type of the component entity (uptime/monitor or uptime/group)",
+						Description: "Type of the component entity (uptime/monitor, uptime/heartbeat or uptime/group)",
 					},
 					"componentable_id": schema.Int64Attribute{
 						Computed:    true,
-						Description: "ID of the component entity (for uptime/monitor)",
+						Description: "ID of the monitor or heartbeat (for uptime/monitor and uptime/heartbeat)",
 					},
 					"name": schema.StringAttribute{
 						Computed:    true,
@@ -479,12 +479,12 @@ func statusPageSchemaAttributes() map[string]schema.Attribute {
 					},
 					"components": schema.ListNestedAttribute{
 						Computed:    true,
-						Description: "List of monitor components shown inside the group (for uptime/group)",
+						Description: "List of monitor and heartbeat components shown inside the group (for uptime/group)",
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"componentable_type": schema.StringAttribute{
 									Computed:    true,
-									Description: "Type of component entity (uptime/monitor)",
+									Description: "Type of component entity (uptime/monitor or uptime/heartbeat)",
 								},
 								"componentable_id": schema.Int64Attribute{
 									Computed:    true,

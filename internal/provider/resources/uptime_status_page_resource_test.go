@@ -1148,6 +1148,78 @@ func TestUptimeStatusPageResource_ModifyPlan(t *testing.T) {
 	})
 }
 
+func TestUptimeStatusPageResource_ModifyPlanHeartbeatComponents(t *testing.T) {
+	r := &uptimeStatusPageResource{}
+	realClient, err := client.NewClient("https://api.phare.io", "token", 10*time.Second, "123", "", "1.0", "1.0", true)
+	require.NoError(t, err)
+
+	r.Configure(context.Background(), resource.ConfigureRequest{
+		ProviderData: realClient,
+	}, &resource.ConfigureResponse{})
+
+	schemaResp := &resource.SchemaResponse{}
+	r.Schema(context.Background(), resource.SchemaRequest{}, schemaResp)
+
+	modifyPlan := func(t *testing.T, components []ComponentModel) *resource.ModifyPlanResponse {
+		planData := validStatusPageModel(t)
+		planData.Components = createComponentsList(t, components)
+
+		plan := tfsdk.Plan{Schema: schemaResp.Schema}
+		diags := plan.Set(context.Background(), planData)
+		require.False(t, diags.HasError())
+
+		resp := &resource.ModifyPlanResponse{}
+		r.ModifyPlan(context.Background(), resource.ModifyPlanRequest{Plan: plan}, resp)
+		return resp
+	}
+
+	hasError := func(resp *resource.ModifyPlanResponse, summary string) bool {
+		for _, diagErr := range resp.Diagnostics.Errors() {
+			if diagErr.Summary() == summary {
+				return true
+			}
+		}
+		return false
+	}
+
+	t.Run("valid plan with top-level and nested heartbeats", func(t *testing.T) {
+		resp := modifyPlan(t, []ComponentModel{
+			createComponent(t, "uptime/heartbeat", int64Ptr(201), nil, nil),
+			createComponent(t, "uptime/group", nil, stringPtr("Jobs"), []NestedComponentModel{
+				createNestedComponent("uptime/monitor", int64Ptr(101)),
+				createNestedComponent("uptime/heartbeat", int64Ptr(202)),
+			}),
+		})
+		require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+	})
+
+	t.Run("monitor and heartbeat with the same ID", func(t *testing.T) {
+		resp := modifyPlan(t, []ComponentModel{
+			createComponent(t, "uptime/monitor", int64Ptr(101), nil, nil),
+			createComponent(t, "uptime/heartbeat", int64Ptr(101), nil, nil),
+		})
+		require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+	})
+
+	t.Run("top-level heartbeat missing componentable_id", func(t *testing.T) {
+		resp := modifyPlan(t, []ComponentModel{
+			createComponent(t, "uptime/heartbeat", nil, nil, nil),
+		})
+		require.True(t, hasError(resp, "Missing Component ID"))
+	})
+
+	t.Run("duplicate heartbeat between top-level and group", func(t *testing.T) {
+		resp := modifyPlan(t, []ComponentModel{
+			createComponent(t, "uptime/heartbeat", int64Ptr(201), nil, nil),
+			createComponent(t, "uptime/group", nil, stringPtr("Jobs"), []NestedComponentModel{
+				createNestedComponent("uptime/heartbeat", int64Ptr(201)),
+			}),
+		})
+		require.True(t, hasError(resp, "Duplicate Heartbeat"))
+		require.False(t, hasError(resp, "Duplicate Monitor"))
+	})
+}
+
 func TestUptimeStatusPageResource_ImportState(t *testing.T) {
 	ctx := context.Background()
 	schemaResp := &resource.SchemaResponse{}

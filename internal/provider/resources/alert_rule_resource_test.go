@@ -67,6 +67,8 @@ func TestAlertRuleResource_EventValidation(t *testing.T) {
 	validEvents := []string{
 		"uptime.monitor.created",
 		"uptime.monitor.deleted",
+		"uptime.heartbeat.created",
+		"uptime.heartbeat.deleted",
 		"uptime.monitor_certificate.discovered",
 		"uptime.monitor_certificate.expiring",
 		"uptime.incident.created",

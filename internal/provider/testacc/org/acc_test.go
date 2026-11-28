@@ -67,6 +67,14 @@ func TestAccUptimeMonitorDataSource(t *testing.T) {
 	testacc.RunUptimeMonitorDataSource(t, scope())
 }
 
+func TestAccUptimeHeartbeatResource(t *testing.T) {
+	testacc.RunUptimeHeartbeatResource(t, scope())
+}
+
+func TestAccUptimeHeartbeatDataSource(t *testing.T) {
+	testacc.RunUptimeHeartbeatDataSource(t, scope())
+}
+
 func TestAccUptimeStatusPageResource(t *testing.T) {
 	testacc.RunUptimeStatusPageResource(t, scope())
 }

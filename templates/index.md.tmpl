@@ -7,7 +7,7 @@ description: |-
 
 # Phare Provider
 
-The Phare provider allows you to manage Phare resources using Terraform. This provider supports creating and managing projects, uptime monitors, status pages, alert rules, and more.
+The Phare provider allows you to manage Phare resources using Terraform. This provider supports creating and managing projects, uptime monitors, heartbeats, status pages, alert rules, and more.
 
 ## Authentication
 

@@ -287,6 +287,60 @@ func TestSafeEntityName(t *testing.T) {
 	}
 }
 
+func TestSafeEntityName_ExtraSymbols(t *testing.T) {
+	v := SafeEntityName('/')
+	require.Contains(t, v.Description(context.Background()), "/")
+
+	testCases := []struct {
+		name        string
+		val         types.String
+		expectError bool
+	}{
+		{"slash", types.StringValue("backups/nightly"), false},
+		{"slashes only", types.StringValue("//"), false},
+		{"slash and allowed symbols", types.StringValue("Ops/Infra (EU)"), false},
+		{"empty", types.StringValue(""), true},
+		{"emoji", types.StringValue("backups/🚀"), true},
+		{"backslash", types.StringValue("backups\\nightly"), true},
+		{"hebrew", types.StringValue("צוות/a"), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.StringRequest{Path: path.Root("name"), ConfigValue: tc.val}
+			resp := &validator.StringResponse{}
+			v.ValidateString(context.Background(), req, resp)
+			require.Equal(t, tc.expectError, resp.Diagnostics.HasError())
+		})
+	}
+}
+
+func TestInt64MultipleOf(t *testing.T) {
+	v := Int64MultipleOf(60)
+	require.Equal(t, "value must be a multiple of 60", v.Description(context.Background()))
+
+	testCases := []struct {
+		name        string
+		val         types.Int64
+		expectError bool
+	}{
+		{"null is skipped", types.Int64Null(), false},
+		{"unknown is skipped", types.Int64Unknown(), false},
+		{"zero", types.Int64Value(0), false},
+		{"multiple", types.Int64Value(3600), false},
+		{"not a multiple", types.Int64Value(90), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.Int64Request{Path: path.Root("interval"), ConfigValue: tc.val}
+			resp := &validator.Int64Response{}
+			v.ValidateInt64(context.Background(), req, resp)
+			require.Equal(t, tc.expectError, resp.Diagnostics.HasError())
+		})
+	}
+}
+
 func TestHostname(t *testing.T) {
 	v := Hostname()
 	require.NotEmpty(t, v.Description(context.Background()))

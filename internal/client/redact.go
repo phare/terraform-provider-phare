@@ -15,6 +15,7 @@ var sensitiveBodyKeys = map[string]struct{}{
 	"access_token":      {}, // status pages, ntfy integrations
 	"api_key":           {}, // pushover integrations
 	"integration_key":   {}, // ilert integrations
+	"ping_url":          {}, // heartbeats
 	"secret":            {}, // outgoing webhook integrations
 	"user_agent_secret": {}, // http monitors
 	"user_key":          {}, // pushover integrations
