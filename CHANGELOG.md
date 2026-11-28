@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `phare_uptime_heartbeat` resource.
+- `phare_uptime_heartbeat` and `phare_uptime_heartbeats` data sources.
+- `uptime/heartbeat` component type on the `phare_uptime_status_page` resource.
+- `uptime.heartbeat.created` and `uptime.heartbeat.deleted` events on the `phare_alert_rule` resource.
+ 
 ## [1.2.1] - 2026-11-16
 
 ### Deprecated

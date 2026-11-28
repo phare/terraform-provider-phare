@@ -156,6 +156,8 @@ func (r *alertRuleResource) Schema(ctx context.Context, req resource.SchemaReque
 			stringvalidator.OneOf(
 				"uptime.monitor.created",
 				"uptime.monitor.deleted",
+				"uptime.heartbeat.created",
+				"uptime.heartbeat.deleted",
 				"uptime.monitor_certificate.discovered",
 				"uptime.monitor_certificate.expiring",
 				"uptime.incident.created",

@@ -87,7 +87,7 @@ resource "phare_uptime_monitor_http" "test" {
 	` + s.Attr() + `
 	name         = "` + name + `"
 	display_name = "Core Monitor"
-	interval     = 30
+	interval     = 1800
 	timeout      = 15000
 	regions      = ["eu-fra-cdg"]
 

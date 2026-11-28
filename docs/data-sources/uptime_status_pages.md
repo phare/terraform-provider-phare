@@ -63,9 +63,9 @@ Read-Only:
 
 Read-Only:
 
-- `componentable_id` (Number) ID of the component entity (for uptime/monitor)
-- `componentable_type` (String) Type of the component entity (uptime/monitor or uptime/group)
-- `components` (Attributes List) List of monitor components shown inside the group (for uptime/group) (see [below for nested schema](#nestedatt--status_pages--components--components))
+- `componentable_id` (Number) ID of the monitor or heartbeat (for uptime/monitor and uptime/heartbeat)
+- `componentable_type` (String) Type of the component entity (uptime/monitor, uptime/heartbeat or uptime/group)
+- `components` (Attributes List) List of monitor and heartbeat components shown inside the group (for uptime/group) (see [below for nested schema](#nestedatt--status_pages--components--components))
 - `is_expanded` (Boolean) Whether the component group is expanded by default (for uptime/group)
 - `name` (String) Name of the component group (for uptime/group)
 
@@ -75,7 +75,7 @@ Read-Only:
 Read-Only:
 
 - `componentable_id` (Number) ID of the component entity inside the group
-- `componentable_type` (String) Type of component entity (uptime/monitor)
+- `componentable_type` (String) Type of component entity (uptime/monitor or uptime/heartbeat)
 
 
 

@@ -6,6 +6,10 @@ data "phare_uptime_monitor" "api" {
   id = 124
 }
 
+data "phare_uptime_heartbeat" "backup" {
+  id = 125
+}
+
 resource "phare_uptime_status_page" "main" {
   name                  = "Status page"
   title                 = "Example status page"
@@ -68,6 +72,10 @@ resource "phare_uptime_status_page" "main" {
         {
           componentable_type = "uptime/monitor"
           componentable_id   = data.phare_uptime_monitor.api.id
+        },
+        {
+          componentable_type = "uptime/heartbeat"
+          componentable_id   = data.phare_uptime_heartbeat.backup.id
         }
       ]
     }

@@ -118,10 +118,21 @@ var (
 	rightToLeftPattern = regexp.MustCompile(`[\p{Hebrew}\p{Arabic}\p{Syriac}\p{Thaana}\p{Nko}\p{Samaritan}\p{Mandaic}\p{Adlam}]`)
 )
 
-type safeEntityNameValidator struct{}
+type safeEntityNameValidator struct {
+	// extra lists the symbols allowed on top of safeEntityNameAllowedChars
+	extra []rune
+}
+
+func (v safeEntityNameValidator) allowedChars() string {
+	allowed := safeEntityNameAllowedChars
+	for _, r := range v.extra {
+		allowed += " " + string(r)
+	}
+	return allowed
+}
 
 func (v safeEntityNameValidator) Description(ctx context.Context) string {
-	return "string can only contain letters, numbers, spaces and: " + safeEntityNameAllowedChars
+	return "string can only contain letters, numbers, spaces and: " + v.allowedChars()
 }
 
 func (v safeEntityNameValidator) MarkdownDescription(ctx context.Context) string {
@@ -143,19 +154,61 @@ func (v safeEntityNameValidator) ValidateString(ctx context.Context, req validat
 		return
 	}
 
-	if !safeEntityNamePattern.MatchString(value) {
+	// The extra symbols are allowed anywhere, a name made of them only is valid
+	stripped := strings.Map(func(r rune) rune {
+		for _, extra := range v.extra {
+			if r == extra {
+				return -1
+			}
+		}
+		return r
+	}, value)
+
+	if (stripped != "" || value == "") && !safeEntityNamePattern.MatchString(stripped) {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid Attribute Value",
-			"can only contain letters, numbers, spaces and: "+safeEntityNameAllowedChars,
+			"can only contain letters, numbers, spaces and: "+v.allowedChars(),
 		)
 	}
 }
 
 // SafeEntityName returns a validator that checks a name only contains the characters accepted by the API
 // (letters, numbers, spaces and a restricted set of symbols, no emojis or right-to-left text).
-func SafeEntityName() validator.String {
-	return safeEntityNameValidator{}
+// The extra symbols are allowed on top of the restricted set, like the / of heartbeat names.
+func SafeEntityName(extra ...rune) validator.String {
+	return safeEntityNameValidator{extra: extra}
+}
+
+type int64MultipleOfValidator struct {
+	divisor int64
+}
+
+func (v int64MultipleOfValidator) Description(ctx context.Context) string {
+	return fmt.Sprintf("value must be a multiple of %d", v.divisor)
+}
+
+func (v int64MultipleOfValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v int64MultipleOfValidator) ValidateInt64(ctx context.Context, req validator.Int64Request, resp *validator.Int64Response) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	if req.ConfigValue.ValueInt64()%v.divisor != 0 {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Attribute Value",
+			fmt.Sprintf("must be a multiple of %d, got: %d", v.divisor, req.ConfigValue.ValueInt64()),
+		)
+	}
+}
+
+// Int64MultipleOf returns a validator that checks an integer is a multiple of the divisor.
+func Int64MultipleOf(divisor int64) validator.Int64 {
+	return int64MultipleOfValidator{divisor: divisor}
 }
 
 var (

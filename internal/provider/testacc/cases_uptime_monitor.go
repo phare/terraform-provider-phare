@@ -6,6 +6,10 @@ import (
 	testingresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
+// The test monitors check every 30 or 60 minutes from a single region, so they
+// only count the minimum monthly monitoring events: the org and project packages
+// run in parallel, and a create above the quota fails with a 402.
+
 // RunUptimeMonitorHttpResource creates a basic HTTP uptime monitor and verifies CRUD operations
 func RunUptimeMonitorHttpResource(t *testing.T, s Scope) {
 	name := RandomName("http")
@@ -17,7 +21,7 @@ resource "phare_uptime_monitor_http" "test" {
 	` + s.Attr() + `
 	name         = "` + name + `"
 	display_name = "Website"
-	interval     = 30
+	interval     = 1800
 	timeout      = 15000
 	regions      = ["eu-fra-cdg"]
 
@@ -41,7 +45,7 @@ resource "phare_uptime_monitor_http" "test" {
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "name", name),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "display_name", "Website"),
-				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "interval", "30"),
+				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "interval", "1800"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "timeout", "15000"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "incident_confirmations", "3"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "recovery_confirmations", "2"),
@@ -64,7 +68,7 @@ resource "phare_uptime_monitor_http" "test" {
 resource "phare_uptime_monitor_http" "test" {
 	` + s.Attr() + `
 	name     = "` + name + `-updated"
-	interval = 60
+	interval = 3600
 	timeout  = 15000
 	regions  = ["eu-fra-cdg"]
 
@@ -88,7 +92,7 @@ resource "phare_uptime_monitor_http" "test" {
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "name", name+"-updated"),
 				testingresource.TestCheckNoResourceAttr("phare_uptime_monitor_http.test", "display_name"),
-				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "interval", "60"),
+				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "interval", "3600"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "region_threshold", "1"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_http.test", "request.method", "GET"),
 			),
@@ -104,7 +108,7 @@ func httpMonitorSecretsConfig(s Scope, name, requestAttrs, headers string) strin
 resource "phare_uptime_monitor_http" "test" {
 	` + s.Attr() + `
 	name     = "` + name + `"
-	interval = 60
+	interval = 3600
 	timeout  = 15000
 	regions  = ["eu-fra-cdg"]
 
@@ -217,7 +221,7 @@ resource "phare_uptime_monitor_icmp" "test" {
     host = "1.1.1.1"
   }
 
-  interval               = 30
+  interval               = 1800
   timeout                = 7000
   incident_confirmations = 1
   recovery_confirmations = 3
@@ -227,7 +231,7 @@ resource "phare_uptime_monitor_icmp" "test" {
 `,
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "name", name),
-				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "interval", "30"),
+				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "interval", "1800"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "timeout", "7000"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "incident_confirmations", "1"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "recovery_confirmations", "3"),
@@ -250,7 +254,7 @@ resource "phare_uptime_monitor_icmp" "test" {
     host = "8.8.8.8"
   }
 
-  interval               = 60
+  interval               = 3600
   timeout                = 10000
   incident_confirmations = 2
   recovery_confirmations = 1
@@ -260,7 +264,7 @@ resource "phare_uptime_monitor_icmp" "test" {
 `,
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "name", name+"-updated"),
-				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "interval", "60"),
+				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "interval", "3600"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "timeout", "10000"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "incident_confirmations", "2"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_icmp.test", "recovery_confirmations", "1"),
@@ -291,7 +295,7 @@ resource "phare_uptime_monitor_tcp" "test" {
     tls_skip_verify = false
   }
 
-  interval               = 30
+  interval               = 1800
   timeout                = 7000
   incident_confirmations = 1
   recovery_confirmations = 3
@@ -301,7 +305,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 `,
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "name", name),
-				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "interval", "30"),
+				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "interval", "1800"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "timeout", "7000"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "incident_confirmations", "1"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "recovery_confirmations", "3"),
@@ -331,7 +335,7 @@ resource "phare_uptime_monitor_tcp" "test" {
     tls_skip_verify = true
   }
 
-  interval               = 60
+  interval               = 3600
   timeout                = 10000
   incident_confirmations = 2
   recovery_confirmations = 1
@@ -342,7 +346,7 @@ resource "phare_uptime_monitor_tcp" "test" {
 			Check: testingresource.ComposeAggregateTestCheckFunc(
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "name", name+"-updated"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "display_name", "Website"),
-				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "interval", "60"),
+				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "interval", "3600"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "timeout", "10000"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "incident_confirmations", "2"),
 				testingresource.TestCheckResourceAttr("phare_uptime_monitor_tcp.test", "recovery_confirmations", "1"),
@@ -376,7 +380,7 @@ resource "phare_uptime_monitor_tcp" "test" {
     tls_skip_verify = false
   }
 
-  interval               = 30
+  interval               = 1800
   timeout                = 7000
   incident_confirmations = 1
   recovery_confirmations = 3
@@ -454,7 +458,7 @@ data "phare_uptime_monitors" "all" {
 				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "name", name),
 				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "display_name", "Core Monitor"),
 				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "protocol", "http"),
-				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "interval", "30"),
+				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "interval", "1800"),
 				testingresource.TestCheckResourceAttr("data.phare_uptime_monitor.test", "request.url", "https://invariance.dev"),
 				testingresource.TestCheckTypeSetElemAttrPair("data.phare_uptime_monitors.all", "monitors.*.id", "phare_uptime_monitor_http.test", "id"),
 			),

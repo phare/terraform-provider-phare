@@ -154,15 +154,15 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					Attributes: map[string]schema.Attribute{
 						"componentable_id": schema.Int64Attribute{
 							Optional:            true,
-							Description:         "ID of the component entity to display on the status page (required for uptime/monitor)",
-							MarkdownDescription: "ID of the component entity to display on the status page (required for uptime/monitor)",
+							Description:         "ID of the monitor or heartbeat to display on the status page (required for uptime/monitor and uptime/heartbeat)",
+							MarkdownDescription: "ID of the monitor or heartbeat to display on the status page (required for uptime/monitor and uptime/heartbeat)",
 						},
 						"componentable_type": schema.StringAttribute{
 							Required:            true,
-							Description:         "Type of component entity (uptime/monitor or uptime/group)",
-							MarkdownDescription: "Type of component entity (uptime/monitor or uptime/group)",
+							Description:         "Type of component entity (uptime/monitor, uptime/heartbeat or uptime/group)",
+							MarkdownDescription: "Type of component entity (uptime/monitor, uptime/heartbeat or uptime/group)",
 							Validators: []validator.String{
-								stringvalidator.OneOf("uptime/monitor", "uptime/group"),
+								stringvalidator.OneOf("uptime/monitor", "uptime/heartbeat", "uptime/group"),
 							},
 						},
 						"name": schema.StringAttribute{
@@ -184,15 +184,15 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 								Attributes: map[string]schema.Attribute{
 									"componentable_id": schema.Int64Attribute{
 										Required:            true,
-										Description:         "ID of the component entity to display inside the component group",
-										MarkdownDescription: "ID of the component entity to display inside the component group",
+										Description:         "ID of the monitor or heartbeat to display inside the component group",
+										MarkdownDescription: "ID of the monitor or heartbeat to display inside the component group",
 									},
 									"componentable_type": schema.StringAttribute{
 										Required:            true,
-										Description:         "Type of component entity (uptime/monitor)",
-										MarkdownDescription: "Type of component entity (uptime/monitor)",
+										Description:         "Type of component entity (uptime/monitor or uptime/heartbeat)",
+										MarkdownDescription: "Type of component entity (uptime/monitor or uptime/heartbeat)",
 										Validators: []validator.String{
-											stringvalidator.OneOf("uptime/monitor"),
+											stringvalidator.OneOf("uptime/monitor", "uptime/heartbeat"),
 										},
 									},
 								},
@@ -204,8 +204,8 @@ func UptimeStatusPageResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 				Required:            true,
-				Description:         "List of components to show on the status page",
-				MarkdownDescription: "List of components to show on the status page",
+				Description:         "List of components to show on the status page, a monitor or a heartbeat can only be shown once on a status page",
+				MarkdownDescription: "List of components to show on the status page, a monitor or a heartbeat can only be shown once on a status page",
 				Validators: []validator.List{
 					listvalidator.SizeBetween(1, 100),
 				},
@@ -560,32 +560,44 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 			return
 		}
 
-		seenMonitors := make(map[int64]bool)
+		// A monitor or a heartbeat can only be shown once, their IDs are distinct sequences
+		type seenKey struct {
+			componentableType string
+			id                int64
+		}
+		seen := make(map[seenKey]bool)
+
+		// checkDuplicate reports a component shown more than once
+		checkDuplicate := func(componentableType string, id int64, idPath path.Path) {
+			key := seenKey{componentableType, id}
+			if !seen[key] {
+				seen[key] = true
+				return
+			}
+
+			label := componentLabel(componentableType)
+			resp.Diagnostics.AddAttributeError(
+				idPath,
+				"Duplicate "+label,
+				fmt.Sprintf("%s with ID %d is duplicated. %s IDs must not appear more than once across top-level components and group components.", label, id, label),
+			)
+		}
 
 		for i, comp := range components {
 			if comp.ComponentableType.IsNull() || comp.ComponentableType.IsUnknown() {
 				continue
 			}
 
-			switch comp.ComponentableType.ValueString() {
-			case "uptime/monitor":
+			switch componentableType := comp.ComponentableType.ValueString(); componentableType {
+			case "uptime/monitor", "uptime/heartbeat":
 				if comp.ComponentableID.IsNull() {
 					resp.Diagnostics.AddAttributeError(
 						path.Root("components").AtListIndex(i).AtName("componentable_id"),
 						"Missing Component ID",
-						"componentable_id is required when componentable_type is 'uptime/monitor'.",
+						fmt.Sprintf("componentable_id is required when componentable_type is '%s'.", componentableType),
 					)
 				} else if !comp.ComponentableID.IsUnknown() {
-					id := comp.ComponentableID.ValueInt64()
-					if seenMonitors[id] {
-						resp.Diagnostics.AddAttributeError(
-							path.Root("components").AtListIndex(i).AtName("componentable_id"),
-							"Duplicate Monitor",
-							fmt.Sprintf("Monitor with ID %d is duplicated. Monitor IDs must not appear more than once across top-level components and group components.", id),
-						)
-					} else {
-						seenMonitors[id] = true
-					}
+					checkDuplicate(componentableType, comp.ComponentableID.ValueInt64(), path.Root("components").AtListIndex(i).AtName("componentable_id"))
 				}
 
 			case "uptime/group":
@@ -619,39 +631,42 @@ func (r *uptimeStatusPageResource) ModifyPlan(ctx context.Context, req resource.
 					}
 
 					for j, childComp := range groupComponents {
+						childPath := path.Root("components").AtListIndex(i).AtName("components").AtListIndex(j)
+						childType := ""
 						if !childComp.ComponentableType.IsNull() && !childComp.ComponentableType.IsUnknown() {
-							if childComp.ComponentableType.ValueString() != "uptime/monitor" {
+							childType = childComp.ComponentableType.ValueString()
+							if childType != "uptime/monitor" && childType != "uptime/heartbeat" {
 								resp.Diagnostics.AddAttributeError(
-									path.Root("components").AtListIndex(i).AtName("components").AtListIndex(j).AtName("componentable_type"),
+									childPath.AtName("componentable_type"),
 									"Invalid Component Type",
-									"Group nested component type must be 'uptime/monitor'.",
+									"Group nested component type must be 'uptime/monitor' or 'uptime/heartbeat'.",
 								)
+								childType = ""
 							}
 						}
 
 						if childComp.ComponentableID.IsNull() {
 							resp.Diagnostics.AddAttributeError(
-								path.Root("components").AtListIndex(i).AtName("components").AtListIndex(j).AtName("componentable_id"),
+								childPath.AtName("componentable_id"),
 								"Missing Component ID",
-								"Group nested component monitor must have a valid componentable_id.",
+								"Group nested component must have a valid componentable_id.",
 							)
-						} else if !childComp.ComponentableID.IsUnknown() {
-							childID := childComp.ComponentableID.ValueInt64()
-							if seenMonitors[childID] {
-								resp.Diagnostics.AddAttributeError(
-									path.Root("components").AtListIndex(i).AtName("components").AtListIndex(j).AtName("componentable_id"),
-									"Duplicate Monitor",
-									fmt.Sprintf("Monitor with ID %d is duplicated. Monitor IDs must not appear more than once across top-level components and group components.", childID),
-								)
-							} else {
-								seenMonitors[childID] = true
-							}
+						} else if !childComp.ComponentableID.IsUnknown() && childType != "" {
+							checkDuplicate(childType, childComp.ComponentableID.ValueInt64(), childPath.AtName("componentable_id"))
 						}
 					}
 				}
 			}
 		}
 	}
+}
+
+// componentLabel returns the name of the entity shown by a status page component type
+func componentLabel(componentableType string) string {
+	if componentableType == "uptime/heartbeat" {
+		return "Heartbeat"
+	}
+	return "Monitor"
 }
 
 // Helper function to convert Terraform theme colors model to client theme colors
